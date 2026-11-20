@@ -17,15 +17,15 @@ Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Lite
 
 ## Tecnologías
 
-| Área | Herramienta |
-|---|---|
-| Interfaz | Svelte 5 + TypeScript |
-| Compilación | Vite |
-| Render 3D | Three.js *(pendiente)* |
-| NBT | Deepslate *(pendiente)* |
-| Tests | Vitest |
-| Calidad | ESLint + Prettier |
-| Paquetes | pnpm |
+| Área        | Herramienta             |
+| ----------- | ----------------------- |
+| Interfaz    | Svelte 5 + TypeScript   |
+| Compilación | Vite                    |
+| Render 3D   | Three.js _(pendiente)_  |
+| NBT         | Deepslate _(pendiente)_ |
+| Tests       | Vitest                  |
+| Calidad     | ESLint + Prettier       |
+| Paquetes    | pnpm                    |
 
 ## Requisitos
 
@@ -49,15 +49,15 @@ pnpm test:watch     # tests en modo observación
 
 ## Documentación
 
-| Documento | Contenido |
-|---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Estructura del proyecto y responsabilidad de cada módulo |
-| [FEATURES.md](docs/FEATURES.md) | Funcionalidades y su estado |
-| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Flujo de trabajo, ramas y convenciones |
-| [NBT-FORMATS.md](docs/NBT-FORMATS.md) | Formatos de estructuras y su lectura |
-| [RENDERING.md](docs/RENDERING.md) | Funcionamiento del renderizado |
-| [TEXTURE-SYSTEM.md](docs/TEXTURE-SYSTEM.md) | Texturas, modelos y resource packs |
-| [PERFORMANCE.md](docs/PERFORMANCE.md) | Optimizaciones y mediciones |
+| Documento                                   | Contenido                                                |
+| ------------------------------------------- | -------------------------------------------------------- |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)     | Estructura del proyecto y responsabilidad de cada módulo |
+| [FEATURES.md](docs/FEATURES.md)             | Funcionalidades y su estado                              |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md)     | Flujo de trabajo, ramas y convenciones                   |
+| [NBT-FORMATS.md](docs/NBT-FORMATS.md)       | Formatos de estructuras y su lectura                     |
+| [RENDERING.md](docs/RENDERING.md)           | Funcionamiento del renderizado                           |
+| [TEXTURE-SYSTEM.md](docs/TEXTURE-SYSTEM.md) | Texturas, modelos y resource packs                       |
+| [PERFORMANCE.md](docs/PERFORMANCE.md)       | Optimizaciones y mediciones                              |
 
 ## Recursos de Minecraft
 

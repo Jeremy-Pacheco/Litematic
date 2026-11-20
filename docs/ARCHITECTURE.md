@@ -32,8 +32,8 @@ docs/                    Documentación
 
 ### Módulos implementados
 
-| Módulo | Responsabilidad |
-|---|---|
+| Módulo            | Responsabilidad                                             |
+| ----------------- | ----------------------------------------------------------- |
 | `utils/format.ts` | `formatBytes`: formatea tamaños de archivo en B/KB/MB/GB/TB |
 
 ## Principios
