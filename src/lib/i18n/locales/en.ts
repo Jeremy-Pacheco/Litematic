@@ -37,7 +37,9 @@ export const en: Messages = {
     mismatchTitle: 'Extension does not match',
     mismatch:
       '{name} has the {extension} extension, but its content is {format}. The content is used.',
-    blocksPending: 'Blocks are not interpreted yet: the 3D view arrives in upcoming versions.',
+    blocksPending:
+      'Blocks of this format are not interpreted yet: it arrives in upcoming versions.',
+    viewerPending: 'Blocks read successfully. The 3D view arrives in upcoming versions.',
     errors: {
       'unrecognized-data': {
         title: 'Not a structure file',
@@ -60,6 +62,15 @@ export const en: Messages = {
         title: 'Unrecognized format',
         message: '{name} is valid NBT, but not a .litematic, .schem or .schematic structure.',
       },
+      'invalid-structure': {
+        title: 'Invalid structure',
+        message: 'The block data of {name} is inconsistent: {detail}',
+      },
+      'structure-too-large': {
+        title: 'Structure too large',
+        message:
+          '{name} exceeds the maximum of {maxBlocks} blocks. It is rejected to protect the browser memory.',
+      },
       'out-of-memory': {
         title: 'Not enough memory',
         message:
@@ -78,6 +89,7 @@ export const en: Messages = {
   phase: {
     decompressing: 'Decompressing',
     parsing: 'Interpreting NBT',
+    decoding: 'Decoding blocks',
   },
   format: {
     litematic: 'Litematica',
@@ -94,6 +106,18 @@ export const en: Messages = {
     readTime: 'Read time',
     readTimeValue: '{time} ms',
     unknown: 'Not recorded',
+    author: 'Author',
+    blocks: 'Blocks',
+    states: 'Distinct states',
+    regions: 'Regions',
+    objects: 'Entities',
+    objectsValue: '{blockEntities} block · {entities} free',
+  },
+  warnings: {
+    legacy: 'File from before Minecraft 1.13: old block names are kept unconverted.',
+    invalidIndices: '{count} blocks used a missing state and were read as air.',
+    overlap: '{count} positions were taken by several regions; the last one was used.',
+    skipped: '{count} entities had no valid position and were skipped.',
   },
   toast: {
     region: 'Notifications',

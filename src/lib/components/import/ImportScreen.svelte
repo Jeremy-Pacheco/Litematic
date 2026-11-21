@@ -2,9 +2,10 @@
   import { STRUCTURE_ACCEPT, STRUCTURE_EXTENSIONS } from '../../constants/formats'
   import { i18n } from '../../i18n/i18n.svelte'
   import { DEFAULT_MAX_DECOMPRESSED_BYTES } from '../../parsers/nbt/decompress'
+  import { MAX_STRUCTURE_VOLUME } from '../../parsers/structureBuilder'
   import { importState } from '../../stores/importState.svelte'
   import { toasts } from '../../stores/toasts.svelte'
-  import { formatBytes } from '../../utils/format'
+  import { formatBytes, formatCount } from '../../utils/format'
   import { checkStructureFile } from '../../utils/structureFile'
   import DropZone from './DropZone.svelte'
   import ReadingProgress from './ReadingProgress.svelte'
@@ -48,6 +49,7 @@
       const params = {
         name,
         limit: formatBytes(DEFAULT_MAX_DECOMPRESSED_BYTES, 0, i18n.locale),
+        maxBlocks: formatCount(MAX_STRUCTURE_VOLUME, i18n.locale),
         detail: outcome.message,
       }
       toasts.push({
@@ -94,6 +96,7 @@
     <StructureSummary
       fileName={current.file.name}
       info={status.info}
+      structure={status.structure}
       accept={STRUCTURE_ACCEPT}
       onfiles={handleFiles}
     />
@@ -106,6 +109,9 @@
 <style>
   .screen {
     display: grid;
+    /* A bounded column: with an auto-sized one, a long unbreakable file name
+       would widen the panel past the screen on phones. */
+    grid-template-columns: minmax(0, 520px);
     place-content: center;
     justify-items: center;
     gap: var(--space-4);

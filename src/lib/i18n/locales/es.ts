@@ -41,7 +41,8 @@ export const es = {
     mismatch:
       '{name} tiene extensión {extension}, pero su contenido es {format}. Se usa el contenido.',
     blocksPending:
-      'Los bloques todavía no se interpretan: la visualización llegará en las próximas versiones.',
+      'Los bloques de este formato todavía no se interpretan: llegará en las próximas versiones.',
+    viewerPending: 'Bloques leídos correctamente. La vista 3D llegará en las próximas versiones.',
     errors: {
       'unrecognized-data': {
         title: 'No es un archivo de estructura',
@@ -65,6 +66,15 @@ export const es = {
         message:
           '{name} es un archivo NBT válido, pero no es una estructura .litematic, .schem ni .schematic.',
       },
+      'invalid-structure': {
+        title: 'Estructura no válida',
+        message: 'Los datos de bloques de {name} son incoherentes: {detail}',
+      },
+      'structure-too-large': {
+        title: 'Estructura demasiado grande',
+        message:
+          '{name} supera el máximo de {maxBlocks} bloques. Se rechaza para proteger la memoria del navegador.',
+      },
       'out-of-memory': {
         title: 'Memoria insuficiente',
         message:
@@ -83,6 +93,7 @@ export const es = {
   phase: {
     decompressing: 'Descomprimiendo',
     parsing: 'Interpretando NBT',
+    decoding: 'Decodificando bloques',
   },
   format: {
     litematic: 'Litematica',
@@ -99,6 +110,19 @@ export const es = {
     readTime: 'Tiempo de lectura',
     readTimeValue: '{time} ms',
     unknown: 'No indicado',
+    author: 'Autor',
+    blocks: 'Bloques',
+    states: 'Estados distintos',
+    regions: 'Regiones',
+    objects: 'Entidades',
+    objectsValue: '{blockEntities} de bloque · {entities} libres',
+  },
+  warnings: {
+    legacy:
+      'Archivo anterior a Minecraft 1.13: los nombres de bloque antiguos se conservan sin convertir.',
+    invalidIndices: '{count} bloques usaban un estado inexistente y se han leído como aire.',
+    overlap: '{count} posiciones estaban ocupadas por varias regiones; se ha usado la última.',
+    skipped: '{count} entidades no tenían una posición válida y se han omitido.',
   },
   toast: {
     region: 'Notificaciones',

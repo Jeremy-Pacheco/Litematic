@@ -1,5 +1,10 @@
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const
 
+/** Integer with the thousands separator of the locale: `5383` → `"5383"` / `"5,383"`. */
+export function formatCount(value: number, locale = 'en'): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)
+}
+
 /**
  * Formats a byte count as a human-readable size using binary (1024) steps,
  * e.g. `1536` → `"1.5 KB"` (`"1,5 KB"` in Spanish). Used to display imported
