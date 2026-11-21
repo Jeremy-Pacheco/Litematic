@@ -119,16 +119,8 @@ function cases(special: boolean): { text: string; front: ((f: BoardFace) => bool
   ]
 }
 
-/**
- * Known gap: the 26.x model of unattached hanging signs at rotations 3, 7,
- * 11 and 15 turns an element with x/y/z angles, which Deepslate cannot read,
- * so they are drawn as missing-model cubes. To be fixed in its own branch.
- */
-const UNREADABLE_GAME_MODEL = /hanging_sign\[attached=false,rotation=(3|7|11|15)\]/
-
 function checkAll(resources: GameResources, special: boolean): void {
   for (const { text, front } of cases(special)) {
-    if (!special && UNREADABLE_GAME_MODEL.test(text)) continue
     const state = parseBlockStateString(text)!
     const baked = bakeState(state, resources, atlas)
     expect(baked.specialModel, text).toBe(special)

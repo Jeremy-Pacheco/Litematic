@@ -5,6 +5,7 @@ import {
   type BlockModelProvider,
 } from 'deepslate/render'
 import type { Identifier } from 'deepslate/core'
+import { normalizeElementRotations } from './elementRotation'
 
 /**
  * Block states and models read from the extracted game files, in the form
@@ -37,7 +38,8 @@ export class GameResources implements BlockDefinitionProvider, BlockModelProvide
       this.#models.set(key, null)
       const json = this.#json(`assets/${id.namespace}/models/${id.path}.json`)
       if (json) {
-        const model = BlockModel.fromJson(json)
+        // 26.x per-axis element rotations, in the form Deepslate reads.
+        const model = BlockModel.fromJson(normalizeElementRotations(json))
         model.flatten(this)
         this.#models.set(key, model)
       }
