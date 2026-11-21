@@ -18,7 +18,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | 10  | `feature/layer-system`             | Construcción por capas                                                     | ✅     |
 | 11  | `feature/block-inspector`          | Selección e inspección de bloques                                          | ✅     |
 | 12  | `feature/texture-packs`            | Resource packs personalizados                                              | ✅     |
-| 13  | `feature/performance-optimization` | Optimización y mediciones de conjunto                                      | ⏳     |
+| 13  | `feature/performance-optimization` | Optimización y mediciones de conjunto                                      | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

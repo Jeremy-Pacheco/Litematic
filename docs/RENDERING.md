@@ -80,23 +80,32 @@ estructura leída ─► App cambia al visor (ViewerScreen, cargado bajo demanda
                        └─ StructureManager.show(structure)
                             1. ModelManager.bake(paleta)        [models worker]
                             2. atlas → DataTexture, 3 materiales
-                            3. Mesher por secciones de 16³      [mesher worker]
+                            3. Mesher por secciones 32 × 16 × 32 [hasta 4 mesher workers]
                             4. secciones en cola → escena, con presupuesto por frame
 ```
 
 ### Geometría por secciones (`viewer/mesher.ts`)
 
-- La estructura se divide en secciones de 16 × 16 × 16. Cada sección produce **una malla por
-  capa** (opaca, recortada, translúcida): pocas _draw calls_ y _frustum culling_ por sección.
+- La estructura se divide en secciones de **32 × 16 × 32** (32 de ancho y largo, 16 de alto). Cada
+  sección produce **una malla por capa** (opaca, recortada, translúcida): pocas _draw calls_ y
+  _frustum culling_ por sección. La altura de 16 permite que las capas oculten secciones por filas;
+  la planta de 32 × 32 reduce a un cuarto las mallas frente a 16³.
 - Por cada bloque se copian los quads preparados de su estado, desplazados a su posición.
 - **Eliminación de caras ocultas:** una cara del lado `d` se omite si el vecino en `d` cubre el
   lado opuesto con caras opacas (`opaqueFaces`), o si es el mismo estado no opaco y ambos cubren
   el lado compartido (cristal contra cristal). Las caras interiores (grupo 6) nunca se omiten.
+- **Fluidos:** una cara de agua o lava junto al mismo fluido se omite (también junto a bloques
+  anegados, algas y burbujas). Un fluido con el mismo fluido encima usa su forma a altura completa
+  (sin franjas entre capas de agua). Así un lago es una superficie, como en el juego, y no miles de
+  caras internas.
 - Formato compacto de vértices: posiciones `Float32`, UV `Uint16` normalizadas, color `Uint8`
   normalizado e índices `Uint16` cuando caben. Ocupa menos de la mitad que todo en 32 bits.
-- El worker envía cada sección en cuanto la termina (de abajo arriba) y **transfiere** sus arrays.
-  El array de bloques se le envía **copiado** (decisión aprobada; compartirlo con
-  `SharedArrayBuffer` exigiría cabeceras COOP/COEP y se valorará en la optimización final).
+- **Varios workers** (`viewer/meshingPlan.ts`): con más de 200 000 bloques se usan hasta 4
+  (dejando un núcleo libre). Cada uno malla una banda de filas de secciones con un peso de bloques
+  parecido (según `layerBlocks`) y recibe solo sus capas, más una por arriba y otra por abajo para
+  las caras ocultas. El primero recibe el array completo y sigue vivo para las tapas de las capas.
+  No hace falta `SharedArrayBuffer` (ni cabeceras COOP/COEP en el servidor).
+- Cada worker envía cada sección en cuanto la termina y **transfiere** sus arrays.
 
 ### Aspecto
 
@@ -124,6 +133,8 @@ estructura leída ─► App cambia al visor (ViewerScreen, cargado bajo demanda
 
 - **Dibujado bajo demanda:** solo se dibuja cuando cambia la cámara o la escena (comprobado: 0
   frames con la imagen quieta).
+- **Sin copias tras la subida:** los arrays de cada malla se liberan en cuanto llegan a la GPU; la
+  selección y las capas usan el array de bloques, no las mallas.
 - **Subida progresiva a la GPU:** las secciones se añaden a la escena con un presupuesto de 200 000
   vértices por frame, para no subir cientos de MB en un solo frame.
 - Al cambiar de estructura se liberan geometrías, materiales y atlas; si el navegador pierde el
