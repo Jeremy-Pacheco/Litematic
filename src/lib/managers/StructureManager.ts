@@ -2,6 +2,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Mesh,
+  MeshBasicMaterial,
   Plane,
   Vector3,
   type DataTexture,
@@ -13,6 +14,7 @@ import type { Structure } from '../types/structure'
 import type { LayerRange } from '../viewer/layers'
 import { createAtlasTexture, createLayerMaterials, LAYER_RENDER_ORDER } from '../viewer/materials'
 import { planMeshing, workerCount } from '../viewer/meshingPlan'
+import { buildSignTextMeshes } from '../viewer/signTextMeshes'
 import { SECTION_HEIGHT, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
 import type { MesherRequest, MesherResponse, MesherStats } from '../workers/mesherProtocol'
 import { ModelManager } from './ModelManager'
@@ -32,6 +34,8 @@ export interface ShowResult {
   bakeMs: number
   /** 1, or the divisor applied to textures too large for the atlas. */
   textureScale: number
+  /** Sign sides with text left undrawn by the limit (`MAX_SIGN_SIDES`). */
+  signsSkipped: number
 }
 
 /** Plane constant that leaves everything visible. */
@@ -98,12 +102,17 @@ export class StructureManager {
     this.#capMaterials = createLayerMaterials(this.#texture)
 
     const stats = await this.#mesh({ ...structure, blocks: variants.blocks }, models, onProgress)
+    // Sign text on top of the boards (cut by the same layer planes).
+    const signs = buildSignTextMeshes(structure, this.#planes)
+    for (const mesh of signs.meshes) this.#scene.content.add(mesh)
+    if (signs.meshes.length > 0) this.#scene.requestRender()
     this.#updateCaps()
     return {
       stats,
       missingBlocks: models.missingBlocks,
       bakeMs: models.durationMs,
       textureScale: models.textureScale,
+      signsSkipped: signs.skipped,
     }
   }
 
@@ -135,6 +144,10 @@ export class StructureManager {
     this.#drained = null
     this.#caps.clear()
     this.#pendingCaps.clear()
+    // Sign text textures belong to their materials only: free them here.
+    for (const child of this.#scene.content.children) {
+      if (child.userData.signText) ((child as Mesh).material as MeshBasicMaterial).map?.dispose()
+    }
     this.#scene.clearContent()
     ;[...this.#materials, ...this.#capMaterials].forEach((m) => m.dispose())
     this.#materials = []

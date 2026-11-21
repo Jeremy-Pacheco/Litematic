@@ -150,4 +150,4 @@ incluye una tabla de formatos → versiones, para no inventar correspondencias.
 
 ## Pendiente
 
-- Texto de carteles y colores del bioma real.
+- Colores del bioma real y texto de los carteles colgantes.

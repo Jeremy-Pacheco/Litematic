@@ -278,6 +278,9 @@ export const en: Messages = {
     error: 'The structure could not be shown in 3D.',
     errorTitle: 'Viewer error',
     retry: 'Retry',
+    signsTitle: 'Too many signs',
+    signsSkipped:
+      'The text of {count} sign sides is not shown, to avoid exhausting graphics memory.',
     missingTitle: 'Blocks without a model',
     missing:
       '{count} block types have no model in the loaded assets and are shown with the missing texture.',
