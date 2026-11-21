@@ -55,13 +55,28 @@ export interface BakedState {
    * faces next to the same fluid are hidden, as in the game.
    */
   fluid: number
-  /** Geometry of that fluid (surface below the top). `null` without fluid. */
-  fluidGeometry: LayeredGeometry | null
   /**
-   * Geometry of that fluid with the same fluid above: full height, its
-   * surface on the top side. `null` without fluid.
+   * Height of that fluid on its own, as the game measures it (amount / 9:
+   * 8/9 for a source, less for flowing fluid); 0 without fluid.
    */
-  fluidFull: LayeredGeometry | null
+  fluidHeight: number
+  /**
+   * How to draw that fluid, or `null` without fluid. Its shape depends on
+   * the neighbours (sloped surface, flow direction), so the mesher builds it
+   * block by block.
+   */
+  fluidRender: FluidRender | null
+}
+
+/** Textures and tint of a fluid, for the mesher. */
+export interface FluidRender {
+  /** Atlas rectangles [u0, v0, u1, v1] of the still and flowing textures. */
+  still: [number, number, number, number]
+  flow: [number, number, number, number]
+  /** RGB tint (water is tinted, lava is not). */
+  color: [number, number, number]
+  /** Render layer of the fluid's texture. */
+  layer: number
 }
 
 export const FLUID_NONE = 0

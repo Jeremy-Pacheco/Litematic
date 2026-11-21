@@ -153,13 +153,13 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
       resources,
       fakeAtlas(),
     )
-    // The model is the same as the dry one; the water is only in the fluid geometry.
+    // The model is the same as the dry one; the water is drawn apart by the mesher.
     expect(wet.geometry[RenderLayer.Opaque].some(Boolean)).toBe(true)
     expect(wet.geometry[RenderLayer.Translucent].some(Boolean)).toBe(false)
     expect(wet.opaqueFaces).toBe(dry.opaqueFaces)
     expect(wet.fullFaces).toBe(dry.fullFaces)
-    expect(wet.fluidGeometry![RenderLayer.Translucent].some(Boolean)).toBe(true)
-    expect(dry.fluidGeometry).toBeNull()
+    expect(wet.fluidRender?.layer).toBe(RenderLayer.Translucent)
+    expect(dry.fluidRender).toBeNull()
   })
 
   it('draws blocks without a JSON model through the special renderers', () => {
@@ -195,7 +195,7 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
       resources,
       fakeAtlas(),
     )
-    expect(wet.fluidGeometry![RenderLayer.Translucent].some(Boolean)).toBe(true)
+    expect(wet.fluidRender).not.toBeNull()
   })
 
   it('draws banner patterns from the block entity data', () => {
@@ -216,25 +216,27 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
     expect(ids.has('minecraft:entity/banner/creeper')).toBe(true)
   })
 
-  it('bakes fluids apart from the model, with a full-height shape', () => {
-    const ys = (g: { positions: Float32Array }) => [...g.positions].filter((_, i) => i % 3 === 1)
-    const water = bakeState(state('minecraft:water[level=0]'), resources, fakeAtlas())
+  it('bakes fluids apart from the model: height, textures and tint for the mesher', () => {
+    const atlas = fakeAtlas()
+    const water = bakeState(state('minecraft:water[level=0]'), resources, atlas)
     expect(water.fluid).toBe(FLUID_WATER)
     expect(water.missing).toBe(false)
     expect(water.empty).toBe(false)
     // Water is only fluid: no model of its own.
     expect(water.geometry.flat().some(Boolean)).toBe(false)
     expect(water.opaqueFaces).toBe(0)
-    // Normal shape: the surface is below the top, in the inner group.
-    const surface = water.fluidGeometry![RenderLayer.Translucent][INNER_GROUP]!
-    expect(Math.max(...ys(surface))).toBeLessThan(1)
-    const full = water.fluidFull![RenderLayer.Translucent]
-    // Surface moved to the top side (y = 1), sides now cover the whole block height.
-    expect(ys(full[FACES.indexOf('up')]!)).toEqual([1, 1, 1, 1])
-    expect(full[FACES.indexOf('north')]).not.toBeNull()
-    const lava = bakeState(state('minecraft:lava[level=0]'), resources, fakeAtlas())
+    expect(water.fluidHeight).toBeCloseTo(8 / 9)
+    // The still and flowing textures are the game's, in their atlas cells.
+    const cellOf = (rect: number[]) => atlas.ids[Math.floor(((rect[0] + rect[2]) / 2) * 4096)]
+    expect(cellOf(water.fluidRender!.still)).toBe('minecraft:block/water_still')
+    expect(cellOf(water.fluidRender!.flow)).toBe('minecraft:block/water_flow')
+    expect(water.fluidRender!.layer).toBe(RenderLayer.Translucent)
+    // Water is tinted blue; lava is not.
+    expect(water.fluidRender!.color[2]).toBeGreaterThan(water.fluidRender!.color[0])
+    const lava = bakeState(state('minecraft:lava[level=0]'), resources, atlas)
     expect(lava.fluid).toBe(FLUID_LAVA)
-    expect(lava.fluidFull).not.toBeNull()
+    expect(lava.fluidRender!.color).toEqual([1, 1, 1])
+    expect(cellOf(lava.fluidRender!.still)).toBe('minecraft:block/lava_still')
 
     for (const text of [
       'minecraft:oak_stairs[facing=north,half=bottom,shape=straight,waterlogged=true]',
@@ -244,18 +246,25 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
     ]) {
       const wet = bakeState(state(text), resources, fakeAtlas())
       expect(wet.fluid, text).toBe(FLUID_WATER)
-      expect(wet.fluidGeometry, text).not.toBeNull()
-      expect(ys(wet.fluidFull![RenderLayer.Translucent][FACES.indexOf('up')]!), text).toEqual([
-        1, 1, 1, 1,
-      ])
-      // The model is still drawn, without a second copy of the water.
+      expect(wet.fluidHeight, text).toBeCloseTo(8 / 9)
+      expect(wet.fluidRender, text).not.toBeNull()
+      // The model is still drawn, without the water.
       expect(wet.geometry.flat().some(Boolean), text).toBe(true)
       expect(wet.geometry[RenderLayer.Translucent].some(Boolean), text).toBe(false)
     }
     const stone = bakeState(state('minecraft:stone'), resources, fakeAtlas())
     expect(stone.fluid).toBe(0)
-    expect(stone.fluidGeometry).toBeNull()
-    expect(stone.fluidFull).toBeNull()
+    expect(stone.fluidHeight).toBe(0)
+    expect(stone.fluidRender).toBeNull()
+  })
+
+  it('measures fluid heights like the game (amount / 9)', () => {
+    const height = (text: string) => bakeState(state(text), resources, fakeAtlas()).fluidHeight
+    expect(height('minecraft:water[level=1]')).toBeCloseTo(7 / 9)
+    expect(height('minecraft:water[level=7]')).toBeCloseTo(1 / 9)
+    // Falling fluid (level 8–15) is full again.
+    expect(height('minecraft:water[level=8]')).toBeCloseTo(8 / 9)
+    expect(height('minecraft:lava[level=4]')).toBeCloseTo(4 / 9)
   })
 
   it('collects the fluid textures of waterlogged blocks', () => {

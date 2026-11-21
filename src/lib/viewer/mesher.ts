@@ -6,6 +6,14 @@ import {
   type QuadGeometry,
 } from '../models/bakedTypes'
 import { RENDER_LAYERS } from '../models/renderLayer'
+import {
+  addFluidBlock,
+  cornerHeight,
+  flowDifference,
+  FluidQuads,
+  UP,
+  type Corners,
+} from './fluidSurface'
 import type { Vec3 } from '../types/structure'
 
 /**
@@ -34,6 +42,13 @@ const OFFSETS: readonly (readonly [number, number, number])[] = [
 ]
 /** Index of the opposite side. */
 const OPPOSITE = [1, 0, 3, 2, 5, 4]
+/** Horizontal neighbours (dx, dz). */
+const HORIZONTAL: readonly (readonly [number, number])[] = [
+  [0, -1],
+  [0, 1],
+  [1, 0],
+  [-1, 0],
+]
 
 /** Minecraft's fixed directional shading, by face orientation. */
 export function faceShade(nx: number, ny: number, nz: number): number {
@@ -97,7 +112,7 @@ interface Box {
 /** The parts of a baked state the mesher needs. */
 export type MesherState = Pick<
   BakedState,
-  'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty' | 'fluid' | 'fluidGeometry' | 'fluidFull'
+  'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty' | 'fluid' | 'fluidHeight' | 'fluidRender'
 >
 
 /**
@@ -122,12 +137,10 @@ export class Mesher {
   readonly #yStart: number
   readonly #yEnd: number
   readonly #states: readonly MesherState[]
-  /** Per state: the model, and the fluid it holds (normal and full height). */
+  /** Per state: the model (the fluid it holds is built per block, see `#addFluid`). */
   readonly #prepared: PreparedLayers[]
   /** Whether the model has any quad (water and lava have none). */
   readonly #hasModel: boolean[]
-  readonly #preparedFluid: (PreparedLayers | null)[]
-  readonly #preparedFull: (PreparedLayers | null)[]
 
   constructor(input: MesherInput) {
     this.#size = input.size
@@ -135,16 +148,10 @@ export class Mesher {
     this.#yStart = input.yStart ?? 0
     this.#yEnd = this.#yStart + input.blocks.length / (input.size.x * input.size.z)
     this.#states = input.states
-    const prepareAll = (geometry: (QuadGeometry | null)[][]): PreparedLayers =>
-      geometry.map((groups) => groups.map((g) => (g ? prepare(g) : null)))
-    this.#prepared = input.states.map((state) => prepareAll(state.geometry))
+    this.#prepared = input.states.map((state) =>
+      state.geometry.map((groups) => groups.map((g) => (g ? prepare(g) : null))),
+    )
     this.#hasModel = input.states.map((state) => state.geometry.some((l) => l.some(Boolean)))
-    this.#preparedFluid = input.states.map((state) =>
-      state.fluidGeometry ? prepareAll(state.fluidGeometry) : null,
-    )
-    this.#preparedFull = input.states.map((state) =>
-      state.fluidFull ? prepareAll(state.fluidFull) : null,
-    )
   }
 
   /** Number of sections along each axis. */
@@ -195,9 +202,11 @@ export class Mesher {
     const firstGroup = onlyGroup ?? 0
     const lastGroup = onlyGroup ?? GROUP_COUNT - 1
 
-    // Pass 1: decide which groups are visible and count their quads.
+    // Pass 1: decide which groups are visible and count their quads; fluid
+    // quads are built straight into `fluids`.
     const visible: { layer: number; group: PreparedGroup; x: number; y: number; z: number }[] = []
     const quadCounts = [0, 0, 0]
+    const fluids = new FluidQuads(RENDER_LAYERS.length)
 
     for (let y = y0; y < y1; y++) {
       for (let z = z0; z < z1; z++) {
@@ -205,35 +214,28 @@ export class Mesher {
           const stateIndex = this.#blocks[((y - this.#yStart) * Z + z) * X + x]
           const state = this.#states[stateIndex]
           if (!state || state.empty) continue
-          // The model, then the fluid it holds: with the same fluid above, the
-          // fluid fills its whole block.
-          const fluid = this.#preparedFluid[stateIndex]
-          const firstPart = this.#hasModel[stateIndex] ? 0 : 1
-          for (let part = firstPart; part < (fluid ? 2 : 1); part++) {
-            const isFluid = part === 1
-            const prepared = !isFluid
-              ? this.#prepared[stateIndex]
-              : this.#fluidAt(x, y + 1, z) === state.fluid
-                ? (this.#preparedFull[stateIndex] ?? fluid!)
-                : fluid!
-            for (const layer of RENDER_LAYERS) {
-              const groups = prepared[layer]
-              for (let group = firstGroup; group <= lastGroup; group++) {
-                const g = groups[group]
-                if (!g) continue
-                const cull = onlyGroup === null && group !== INNER_GROUP
-                if (cull && this.#hidden(x, y, z, group, stateIndex, layer, isFluid)) continue
-                visible.push({ layer, group: g, x, y, z })
-                quadCounts[layer] += g.geometry.quadCount
-              }
+          if (state.fluidRender) this.#addFluid(fluids, x, y, z, stateIndex, onlyGroup)
+          if (!this.#hasModel[stateIndex]) continue
+          const prepared = this.#prepared[stateIndex]
+          for (const layer of RENDER_LAYERS) {
+            const groups = prepared[layer]
+            for (let group = firstGroup; group <= lastGroup; group++) {
+              const g = groups[group]
+              if (!g) continue
+              const cull = onlyGroup === null && group !== INNER_GROUP
+              if (cull && this.#hidden(x, y, z, group, stateIndex, layer, false)) continue
+              visible.push({ layer, group: g, x, y, z })
+              quadCounts[layer] += g.geometry.quadCount
             }
           }
         }
       }
     }
 
-    // Pass 2: copy into exactly sized arrays.
-    const layers: (LayerMesh | null)[] = quadCounts.map((n) => (n ? allocate(n) : null))
+    // Pass 2: copy into exactly sized arrays, the fluids after the models.
+    const layers: (LayerMesh | null)[] = quadCounts.map((n, layer) =>
+      n + fluids.counts[layer] ? allocate(n + fluids.counts[layer]) : null,
+    )
     const written = [0, 0, 0]
     for (const { layer, group, x, y, z } of visible) {
       const out = layers[layer]!
@@ -263,8 +265,120 @@ export class Mesher {
       }
       written[layer] += geometry.quadCount
     }
+    for (const layer of RENDER_LAYERS) {
+      const count = fluids.counts[layer]
+      if (count === 0) continue
+      const out = layers[layer]!
+      const quadOffset = written[layer]
+      const { positions, uvs, colors } = fluids.layer(layer)
+      out.positions.set(positions, quadOffset * 12)
+      out.uvs.set(uvs, quadOffset * 8)
+      out.colors.set(colors, quadOffset * 12)
+      for (let q = 0; q < count; q++) {
+        const base = (quadOffset + q) * 4
+        out.indices.set([base, base + 1, base + 2, base, base + 2, base + 3], (quadOffset + q) * 6)
+      }
+      written[layer] += count
+    }
 
     return layers
+  }
+
+  /**
+   * Builds the fluid of one block (see `fluidSurface`): corner heights from
+   * the neighbours, the flow, and the faces not hidden by the same fluid or
+   * an opaque side. With `onlyGroup` (a layer cap), only that side, always.
+   */
+  #addFluid(
+    out: FluidQuads,
+    x: number,
+    y: number,
+    z: number,
+    stateIndex: number,
+    onlyGroup: number | null,
+  ): void {
+    const state = this.#states[stateIndex]
+    const fluid = state.fluid
+    let faces = 0
+    if (onlyGroup !== null) {
+      faces = 1 << onlyGroup
+    } else {
+      for (let group = 0; group < 6; group++) {
+        if (!this.#hidden(x, y, z, group, stateIndex, 0, true)) faces |= 1 << group
+      }
+      // The surface only shows without the same fluid above.
+      if (this.#fluidAt(x, y + 1, z) === fluid) faces &= ~UP
+    }
+    if (faces === 0) return
+
+    const height = (dx: number, dz: number) => this.#fluidHeight(x + dx, y, z + dz, fluid)
+    const self = height(0, 0)
+    let corners: Corners = [1, 1, 1, 1]
+    if (self < 1) {
+      const n = height(0, -1)
+      const s = height(0, 1)
+      const e = height(1, 0)
+      const w = height(-1, 0)
+      corners = [
+        cornerHeight(self, n, w, () => height(-1, -1)),
+        cornerHeight(self, n, e, () => height(1, -1)),
+        cornerHeight(self, s, w, () => height(-1, 1)),
+        cornerHeight(self, s, e, () => height(1, 1)),
+      ]
+    }
+
+    // Flow: only the surface shows it, so it is only needed when that is drawn.
+    let fx = 0
+    let fz = 0
+    if (faces & UP && self < 1) {
+      const own = state.fluidHeight
+      for (const [dx, dz] of HORIZONTAL) {
+        const neighbor = this.#ownFluid(x + dx, y, z + dz, fluid)
+        const diff = flowDifference(own, neighbor, this.#isOpen(x + dx, y, z + dz), () =>
+          this.#ownFluid(x + dx, y - 1, z + dz, fluid),
+        )
+        fx += dx * diff
+        fz += dz * diff
+      }
+    }
+    addFluidBlock(out, state.fluidRender!, x, y, z, corners, [fx, fz], faces)
+  }
+
+  /**
+   * Height of a position for the corners of `fluid` (the game's
+   * `getHeight`): 1 with the same fluid above, its own height for the same
+   * fluid, 0 for open space, -1 for solid blocks and outside the structure
+   * (left out of the average, so the edge of a cut does not slope down).
+   */
+  #fluidHeight(x: number, y: number, z: number, fluid: number): number {
+    const index = this.#indexAt(x, y, z)
+    if (index < 0) return -1
+    const state = this.#states[this.#blocks[index]]
+    if (state?.fluid === fluid) return this.#fluidAt(x, y + 1, z) === fluid ? 1 : state.fluidHeight
+    return this.#isOpen(x, y, z) ? 0 : -1
+  }
+
+  /**
+   * Own height of `fluid` at a position for the flow: the height for the same
+   * fluid, 0 for none, `null` for another fluid or outside the structure.
+   */
+  #ownFluid(x: number, y: number, z: number, fluid: number): number | null {
+    const index = this.#indexAt(x, y, z)
+    if (index < 0) return null
+    const state = this.#states[this.#blocks[index]]
+    if (!state || state.fluid === FLUID_NONE) return 0
+    return state.fluid === fluid ? state.fluidHeight : null
+  }
+
+  /**
+   * Open space for a fluid: air or a block that covers no side (plants,
+   * torches…). Approximates the game's "solid" with the model's coverage.
+   */
+  #isOpen(x: number, y: number, z: number): boolean {
+    const index = this.#indexAt(x, y, z)
+    if (index < 0) return false
+    const state = this.#states[this.#blocks[index]]
+    return !state || state.empty || (state.opaqueFaces === 0 && state.fullFaces === 0)
   }
 
   /** Fluid filling a position (`FLUID_NONE` outside the structure). */

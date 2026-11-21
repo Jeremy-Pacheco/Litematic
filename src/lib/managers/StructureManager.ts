@@ -183,14 +183,14 @@ export class StructureManager {
     const tasks = planMeshing(structure.layerBlocks, workerCount(structure.nonAirBlocks, cores))
     const layerSize = structure.size.x * structure.size.z
     const states = models.states.map(
-      ({ geometry, opaqueFaces, fullFaces, empty, fluid, fluidGeometry, fluidFull }) => ({
+      ({ geometry, opaqueFaces, fullFaces, empty, fluid, fluidHeight, fluidRender }) => ({
         geometry,
         opaqueFaces,
         fullFaces,
         empty,
         fluid,
-        fluidGeometry,
-        fluidFull,
+        fluidHeight,
+        fluidRender,
       }),
     )
     const workers = tasks.map(

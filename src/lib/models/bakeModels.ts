@@ -57,8 +57,7 @@ export function bakedTransferables(models: BakedModels): ArrayBuffer[] {
     ...fontTransferables(models.signFont),
   ]
   for (const state of models.states) {
-    const parts = [state.geometry, state.fluidGeometry ?? [], state.fluidFull ?? []]
-    for (const groups of parts.flat()) {
+    for (const groups of state.geometry) {
       for (const g of groups) {
         if (g) {
           buffers.push(
