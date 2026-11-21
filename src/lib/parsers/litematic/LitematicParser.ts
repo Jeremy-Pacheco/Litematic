@@ -1,6 +1,14 @@
 import { detachNbt, isNbtCompound, type NbtCompound, type NbtLongArray } from '../../types/nbt'
-import type { BlockEntity, Entity, Structure, StructureRegion, Vec3 } from '../../types/structure'
+import type {
+  BlockEntity,
+  BlockState,
+  Entity,
+  Structure,
+  StructureRegion,
+  Vec3,
+} from '../../types/structure'
 import { createBlockState } from '../blockState'
+import { upgradeBlockState } from '../blockStateUpgrade'
 import { StructureReadError } from '../errors'
 import { getCompound, getInteger, getList, getLongArray, getNumber, getString } from '../nbt/access'
 import {
@@ -49,7 +57,12 @@ export function parseLitematic(root: NbtCompound, onProgress?: ParseProgressCall
     (dataVersion !== null && dataVersion > 0 && dataVersion < DATA_VERSION_FLATTENING)
 
   const palette = new PaletteBuilder()
-  const regions = readRegions(root, palette)
+  // Pre-1.13 names are kept as they are (and flagged); later ones are brought
+  // up to the current game.
+  const upgrade = warnings.legacyBlockNames
+    ? (state: BlockState) => state
+    : (state: BlockState) => upgradeBlockState(state, dataVersion)
+  const regions = readRegions(root, palette, upgrade)
 
   // Bounding box of all regions; positions are shifted so it starts at 0,0,0.
   const min = { x: Infinity, y: Infinity, z: Infinity }
@@ -140,7 +153,11 @@ export function parseLitematic(root: NbtCompound, onProgress?: ParseProgressCall
   })
 }
 
-function readRegions(root: NbtCompound, palette: PaletteBuilder): RawRegion[] {
+function readRegions(
+  root: NbtCompound,
+  palette: PaletteBuilder,
+  upgrade: (state: BlockState) => BlockState,
+): RawRegion[] {
   const regionsTag = getCompound(root, 'Regions')
   if (!regionsTag) throw invalid('Missing Regions compound')
 
@@ -168,7 +185,7 @@ function readRegions(root: NbtCompound, palette: PaletteBuilder): RawRegion[] {
 
     const lookup = paletteTag.items.map((entry) => {
       if (!isNbtCompound(entry)) throw invalid(`Region "${name}" has an invalid palette entry`)
-      return palette.add(readBlockState(entry, name))
+      return palette.add(upgrade(readBlockState(entry, name)))
     })
 
     const bits = bitsForPalette(lookup.length)
