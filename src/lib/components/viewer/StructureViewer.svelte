@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { i18n } from '../../i18n/i18n.svelte'
   import type { ViewPreset } from '../../managers/CameraManager'
   import { SceneManager } from '../../managers/SceneManager'
@@ -9,12 +9,14 @@
     type ShowResult,
   } from '../../managers/StructureManager'
   import { assets } from '../../stores/assets.svelte'
+  import { layers } from '../../stores/layers.svelte'
   import { theme } from '../../stores/theme.svelte'
   import { toasts } from '../../stores/toasts.svelte'
   import { backgroundColor, viewer } from '../../stores/viewer.svelte'
   import type { Structure } from '../../types/structure'
   import { formatCount } from '../../utils/format'
   import Button from '../controls/Button.svelte'
+  import LayerPanel from '../layers/LayerPanel.svelte'
   import ViewerToolbar from './ViewerToolbar.svelte'
 
   interface Props {
@@ -78,6 +80,12 @@
     }
   }
 
+  // A new structure starts its layer selection over (before it is shown).
+  $effect(() => {
+    const height = structure.size.y
+    untrack(() => layers.reset(height))
+  })
+
   // (Re)build the 3D view when the structure or the game assets change.
   $effect(() => {
     if (scene && assetsReady) void load(structure)
@@ -85,6 +93,16 @@
 
   $effect(() => {
     scene?.setHelpers({ grid: viewer.grid, box: viewer.box })
+  })
+
+  // Layers: cut the structure (cheap, no rebuild) and outline the current one.
+  $effect(() => {
+    const range = layers.range
+    if (scene) manager?.setLayerRange(range)
+  })
+
+  $effect(() => {
+    scene?.setLayerMarker(viewer.layersOpen ? layers.current : null)
   })
 
   $effect(() => {
@@ -103,6 +121,12 @@
       onview={(view: ViewPreset) => scene?.cameras.setView(view)}
     />
   </div>
+
+  {#if viewer.layersOpen && structure.size.y > 0}
+    <div class="side">
+      <LayerPanel layerBlocks={structure.layerBlocks} />
+    </div>
+  {/if}
 
   {#if !assetsReady}
     <div class="notice" role="status">
@@ -170,6 +194,20 @@
   }
 
   .top > :global(*) {
+    pointer-events: auto;
+  }
+
+  .side {
+    position: absolute;
+    top: calc(var(--space-3) + 42px);
+    right: var(--space-3);
+    bottom: calc(var(--space-3) + 34px);
+    display: flex;
+    align-items: flex-start;
+    pointer-events: none;
+  }
+
+  .side > :global(*) {
     pointer-events: auto;
   }
 

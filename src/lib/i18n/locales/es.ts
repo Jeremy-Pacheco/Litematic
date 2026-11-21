@@ -260,6 +260,7 @@ export const es = {
       sky: 'Cielo',
     },
     panel: 'Panel',
+    layers: 'Capas',
     blocks: '{count} bloques',
     phase: {
       models: 'Preparando modelos…',
@@ -274,6 +275,38 @@ export const es = {
     missingTitle: 'Bloques sin modelo',
     missing:
       '{count} tipos de bloque no tienen modelo en los recursos cargados y se muestran con la textura de «falta textura».',
+  },
+  layers: {
+    title: 'Capas',
+    mode: 'Capas visibles',
+    modes: {
+      all: 'Todas',
+      single: 'Solo la actual',
+      below: 'Hasta la actual',
+      above: 'Desde la actual',
+      range: 'Rango',
+    },
+    layer: 'Capa',
+    layerN: 'Capa {n}',
+    up: 'Subir una capa',
+    down: 'Bajar una capa',
+    from: 'Desde',
+    to: 'Hasta',
+    direction: 'Construir',
+    directions: {
+      up: 'De abajo arriba',
+      down: 'De arriba abajo',
+    },
+    progress: '{done} de {total} capas construidas',
+    progressLabel: 'Progreso de construcción',
+    list: 'Lista de capas',
+    empty: 'vacía',
+    status: {
+      done: 'Construida',
+      current: 'Actual',
+      pending: 'Pendiente',
+    },
+    keys: 'Re Pág / Av Pág: cambiar de capa',
   },
   toast: {
     region: 'Notificaciones',

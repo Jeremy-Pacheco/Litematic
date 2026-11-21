@@ -27,4 +27,22 @@ describe('finishStructure', () => {
     expect([...s.blockCounts]).toEqual([2, 3, 1])
     expect(s.nonAirBlocks).toBe(4)
   })
+
+  it('counts the non-air blocks of each layer', () => {
+    const s = finishStructure({
+      format: 'schem',
+      formatVersion: 3,
+      dataVersion: null,
+      // 2 × 3 × 1: layers of 2 positions.
+      size: { x: 2, y: 3, z: 1 },
+      palette: [AIR, parseBlockStateString('minecraft:stone')!],
+      blocks: new Uint16Array([1, 1, 0, 0, 0, 1]),
+      blockEntities: [],
+      entities: [],
+      regions: [],
+      metadata: { name: null, author: null, description: null, createdAt: null, modifiedAt: null },
+      warnings: emptyWarnings(),
+    })
+    expect([...s.layerBlocks]).toEqual([2, 0, 1])
+  })
 })

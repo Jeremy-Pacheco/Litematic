@@ -103,3 +103,29 @@ describe('Mesher', () => {
     expect(layer.colors[12]).toBe(128) // 0.5 as an 8-bit normalized value
   })
 })
+
+describe('Mesher caps', () => {
+  // Column of three stone blocks: the faces between them are hidden.
+  const column = () => mesh([1, 3, 1], [1, 1, 1], [AIR, STONE]).mesher
+
+  it('returns the top faces of a level even when the level above hides them', () => {
+    const cap = column().meshCap(1, 'up')
+    expect(cap[0]!.quadCount).toBe(1)
+    // The fixture quads sit at the block origin, so only the level offset shows.
+    const ys = [...cap[0]!.positions].filter((_, i) => i % 3 === 1)
+    expect(ys).toEqual([1, 1, 1, 1])
+    // Normal meshing hides it: 4 sides per block plus the two ends.
+    expect(column().meshSection(0, 0, 0).layers[0]!.quadCount).toBe(3 * 4 + 2)
+  })
+
+  it('returns the bottom faces of a level', () => {
+    const cap = column().meshCap(2, 'down')
+    expect(cap[0]!.quadCount).toBe(1)
+    expect(cap[1]).toBeNull()
+  })
+
+  it('is empty for a level of air', () => {
+    const mesher = mesh([1, 2, 1], [0, 1], [AIR, STONE]).mesher
+    expect(mesher.meshCap(0, 'up')).toEqual([null, null, null])
+  })
+})

@@ -2,14 +2,16 @@ import {
   BufferAttribute,
   BufferGeometry,
   Mesh,
+  Plane,
   Vector3,
   type DataTexture,
   type Material,
 } from 'three'
 import type { BakedModels } from '../models/bakeModels'
 import type { Structure } from '../types/structure'
+import type { LayerRange } from '../viewer/layers'
 import { createAtlasTexture, createLayerMaterials, LAYER_RENDER_ORDER } from '../viewer/materials'
-import type { LayerMesh, SectionMesh } from '../viewer/mesher'
+import { SECTION_SIZE, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
 import type { MesherRequest, MesherResponse, MesherStats } from '../workers/mesherProtocol'
 import { ModelManager } from './ModelManager'
 import type { SceneManager } from './SceneManager'
@@ -28,16 +30,44 @@ export interface ShowResult {
   bakeMs: number
 }
 
+/** Plane constant that leaves everything visible. */
+const FAR = 1e6
+/**
+ * The cut sits this far inside the visible layers, so the faces lying exactly
+ * on the cut plane are always removed (no flicker) and drawn by the caps.
+ */
+const CUT_INSET = 0.01
+/** Caps kept in memory, so stepping back and forth between layers is instant. */
+const MAX_CAPS = 8
+
 /**
  * Turns a parsed structure into meshes in a scene: bakes the palette's models
  * (models worker), uploads the atlas, then builds the geometry section by
  * section (mesher worker), adding each section as soon as it arrives.
+ *
+ * Layers are shown **without rebuilding the geometry**: sections outside the
+ * visible layers are hidden, two clipping planes cut the sections that are
+ * partly visible, and small "caps" (the top or bottom faces of the cut level,
+ * made on demand by the mesher worker) close the cut.
  */
 export class StructureManager {
   readonly #scene: SceneManager
   #texture: DataTexture | null = null
+  /** Clipped by the layer planes. */
   #materials: Material[] = []
+  /** Not clipped: caps lie exactly on the cut. */
+  #capMaterials: Material[] = []
+  /** Keeps `y <= top` and `y >= bottom`. */
+  readonly #planes = [new Plane(new Vector3(0, -1, 0), FAR), new Plane(new Vector3(0, 1, 0), FAR)]
   #cancel: (() => void) | null = null
+  #worker: Worker | null = null
+  #height = 0
+  #range: LayerRange | null = null
+  readonly #caps = new Map<string, Mesh[]>()
+  readonly #pendingCaps = new Set<string>()
+  #queue: SectionMesh[] = []
+  #flushScheduled = false
+  #drained: (() => void) | null = null
 
   constructor(scene: SceneManager) {
     this.#scene = scene
@@ -47,6 +77,9 @@ export class StructureManager {
     this.clear()
     const size = new Vector3(structure.size.x, structure.size.y, structure.size.z)
     this.#scene.setBounds(size)
+    this.#height = structure.size.y
+    // Re-apply the layer cut for this structure's height.
+    this.setLayerRange(this.#range)
 
     onProgress?.({ phase: 'models', fraction: 0 })
     const bake = ModelManager.bake(structure.palette)
@@ -54,21 +87,46 @@ export class StructureManager {
     const models = await bake.promise
 
     this.#texture = createAtlasTexture(models.atlas.pixels, models.atlas.size)
-    this.#materials = createLayerMaterials(this.#texture)
+    this.#materials = createLayerMaterials(this.#texture, this.#planes)
+    this.#capMaterials = createLayerMaterials(this.#texture)
 
     const stats = await this.#mesh(structure, models, onProgress)
+    this.#updateCaps()
     return { stats, missingBlocks: models.missingBlocks, bakeMs: models.durationMs }
+  }
+
+  /**
+   * Shows only the layers in `range` (`null`: all of them). Cheap: no
+   * geometry is rebuilt; at most two small caps are requested.
+   */
+  setLayerRange(range: LayerRange | null): void {
+    this.#range = range
+    const cutTop = range !== null && range.max < this.#height - 1
+    const cutBottom = range !== null && range.min > 0
+    this.#planes[0].constant = cutTop ? range.max + 1 - CUT_INSET : FAR
+    this.#planes[1].constant = cutBottom ? -(range.min + CUT_INSET) : FAR
+    for (const child of this.#scene.content.children) {
+      const sy = child.userData.sectionY as number | undefined
+      if (sy !== undefined) child.visible = this.#sectionVisible(sy)
+    }
+    this.#updateCaps()
+    this.#scene.requestRender()
   }
 
   /** Stops any work in progress and frees every GPU resource of the structure. */
   clear(): void {
     this.#cancel?.()
     this.#cancel = null
+    this.#worker?.terminate()
+    this.#worker = null
     this.#queue = []
     this.#drained = null
+    this.#caps.clear()
+    this.#pendingCaps.clear()
     this.#scene.clearContent()
-    this.#materials.forEach((m) => m.dispose())
+    ;[...this.#materials, ...this.#capMaterials].forEach((m) => m.dispose())
     this.#materials = []
+    this.#capMaterials = []
     this.#texture?.dispose()
     this.#texture = null
   }
@@ -81,16 +139,25 @@ export class StructureManager {
     const worker = new Worker(new URL('../workers/mesher.worker.ts', import.meta.url), {
       type: 'module',
     })
+    this.#worker = worker
     return new Promise<MesherStats>((resolve, reject) => {
       let settled = false
-      const finish = () => {
+      const fail = (error: Error) => {
+        if (settled) {
+          // After the structure is shown, only caps can fail: the cut stays
+          // open but the viewer keeps working.
+          console.error('Layer cap could not be built:', error)
+          return
+        }
         settled = true
-        worker.terminate()
         this.#cancel = null
+        reject(error)
       }
       this.#cancel = () => {
         if (settled) return
-        finish()
+        settled = true
+        worker.terminate()
+        this.#worker = null
         reject(new DOMException('Meshing was cancelled', 'AbortError'))
       }
 
@@ -99,19 +166,20 @@ export class StructureManager {
         if (message.type === 'section') {
           this.#addSection(message.mesh)
           onProgress?.({ phase: 'meshing', fraction: message.done / message.total })
+        } else if (message.type === 'cap') {
+          this.#addCap(message.y, message.side, message.layers)
         } else if (message.type === 'done') {
-          finish()
+          settled = true
+          this.#cancel = null
           // Report completion once every section is actually in the scene.
           void this.#whenDrained().then(() => resolve(message.stats))
         } else {
-          finish()
-          reject(new Error(message.message))
+          fail(new Error(message.message))
         }
       }
       worker.onerror = (event: ErrorEvent) => {
         event.preventDefault()
-        finish()
-        reject(new Error(event.message || 'Mesher worker error'))
+        fail(new Error(event.message || 'Mesher worker error'))
       }
 
       // The block array is copied (not transferred): the main thread keeps it
@@ -129,6 +197,78 @@ export class StructureManager {
       }
       worker.postMessage(request)
     })
+  }
+
+  #sectionVisible(sy: number): boolean {
+    const range = this.#range
+    if (!range) return true
+    const y0 = sy * SECTION_SIZE
+    return y0 <= range.max && y0 + SECTION_SIZE - 1 >= range.min
+  }
+
+  /** Caps needed by the current range: the top of the highest visible level, the bottom of the lowest. */
+  #wantedCaps(): Map<string, { y: number; side: CapSide }> {
+    const wanted = new Map<string, { y: number; side: CapSide }>()
+    const range = this.#range
+    if (!range) return wanted
+    if (range.max < this.#height - 1)
+      wanted.set(capKey(range.max, 'up'), { y: range.max, side: 'up' })
+    if (range.min > 0) wanted.set(capKey(range.min, 'down'), { y: range.min, side: 'down' })
+    return wanted
+  }
+
+  /** Shows the caps the range needs and asks the worker for the missing ones. */
+  #updateCaps(): void {
+    const wanted = this.#wantedCaps()
+    for (const [key, meshes] of this.#caps) {
+      for (const mesh of meshes) mesh.visible = wanted.has(key)
+    }
+    // Requests wait until the whole structure is meshed (the worker answers in order).
+    if (!this.#worker || this.#capMaterials.length === 0) return
+    for (const [key, { y, side }] of wanted) {
+      if (this.#caps.has(key) || this.#pendingCaps.has(key)) continue
+      this.#pendingCaps.add(key)
+      const request: MesherRequest = { type: 'cap', y, side }
+      this.#worker.postMessage(request)
+    }
+  }
+
+  #addCap(y: number, side: CapSide, layers: (LayerMesh | null)[]): void {
+    const key = capKey(y, side)
+    this.#pendingCaps.delete(key)
+    const visible = this.#wantedCaps().has(key)
+    const meshes: Mesh[] = []
+    layers.forEach((layer, index) => {
+      if (!layer) return
+      const mesh = this.#createMesh(layer, this.#capMaterials[index], index)
+      mesh.visible = visible
+      this.#scene.content.add(mesh)
+      meshes.push(mesh)
+    })
+    this.#caps.set(key, meshes)
+    this.#evictCaps()
+    if (visible) this.#scene.requestRender()
+  }
+
+  /** Frees the oldest hidden caps beyond `MAX_CAPS`. */
+  #evictCaps(): void {
+    const wanted = this.#wantedCaps()
+    for (const [key, meshes] of this.#caps) {
+      if (this.#caps.size <= MAX_CAPS) break
+      if (wanted.has(key)) continue
+      for (const mesh of meshes) {
+        this.#scene.content.remove(mesh)
+        mesh.geometry.dispose()
+      }
+      this.#caps.delete(key)
+    }
+  }
+
+  #createMesh(layer: LayerMesh, material: Material, index: number): Mesh {
+    const mesh = new Mesh(toGeometry(layer), material)
+    mesh.renderOrder = LAYER_RENDER_ORDER[index as 0 | 1 | 2]
+    mesh.matrixAutoUpdate = false
+    return mesh
   }
 
   /**
@@ -149,12 +289,13 @@ export class StructureManager {
     let vertices = 0
     while (this.#queue.length > 0 && vertices < VERTICES_PER_FRAME) {
       const section = this.#queue.shift()!
+      const visible = this.#sectionVisible(section.section.y)
       section.layers.forEach((layer, index) => {
         if (!layer) return
         vertices += layer.quadCount * 4
-        const mesh = new Mesh(toGeometry(layer), this.#materials[index])
-        mesh.renderOrder = LAYER_RENDER_ORDER[index as 0 | 1 | 2]
-        mesh.matrixAutoUpdate = false
+        const mesh = this.#createMesh(layer, this.#materials[index], index)
+        mesh.userData.sectionY = section.section.y
+        mesh.visible = visible
         this.#scene.content.add(mesh)
       })
     }
@@ -177,14 +318,14 @@ export class StructureManager {
       }
     })
   }
-
-  #queue: SectionMesh[] = []
-  #flushScheduled = false
-  #drained: (() => void) | null = null
 }
 
 /** Geometry added to the scene per frame (bounds GPU upload per frame). */
 const VERTICES_PER_FRAME = 200_000
+
+function capKey(y: number, side: CapSide): string {
+  return `${side}:${y}`
+}
 
 function toGeometry(layer: LayerMesh): BufferGeometry {
   const geometry = new BufferGeometry()

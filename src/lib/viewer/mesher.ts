@@ -61,6 +61,19 @@ export interface MesherInput {
   states: readonly MesherState[]
 }
 
+/** Side of a level that a cap covers: the top (`up`) or the bottom (`down`). */
+export type CapSide = 'up' | 'down'
+
+/** Half-open box of block positions. */
+interface Box {
+  x0: number
+  y0: number
+  z0: number
+  x1: number
+  y1: number
+  z1: number
+}
+
 /** The parts of a baked state the mesher needs. */
 export type MesherState = Pick<BakedState, 'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty'>
 
@@ -106,9 +119,38 @@ export class Mesher {
     const x0 = sx * SECTION_SIZE
     const y0 = sy * SECTION_SIZE
     const z0 = sz * SECTION_SIZE
-    const x1 = Math.min(X, x0 + SECTION_SIZE)
-    const y1 = Math.min(Y, y0 + SECTION_SIZE)
-    const z1 = Math.min(Z, z0 + SECTION_SIZE)
+    const box = {
+      x0,
+      y0,
+      z0,
+      x1: Math.min(X, x0 + SECTION_SIZE),
+      y1: Math.min(Y, y0 + SECTION_SIZE),
+      z1: Math.min(Z, z0 + SECTION_SIZE),
+    }
+    return { section: { x: sx, y: sy, z: sz }, layers: this.#meshBox(box, null) }
+  }
+
+  /**
+   * Every face on side `side` (top or bottom) of the blocks of level `y`,
+   * **without** hiding the ones covered by the level above or below. The
+   * layer system shows it when that neighbouring level is hidden, so a cut
+   * through the structure shows closed blocks instead of holes.
+   */
+  meshCap(y: number, side: CapSide): (LayerMesh | null)[] {
+    const { x: X, z: Z } = this.#size
+    const box = { x0: 0, y0: y, z0: 0, x1: X, y1: y + 1, z1: Z }
+    return this.#meshBox(box, side === 'up' ? 0 : 1)
+  }
+
+  /**
+   * Meshes the blocks of a box. With `onlyGroup` null, every group with the
+   * hidden faces removed; otherwise only that side group, with no culling.
+   */
+  #meshBox(box: Box, onlyGroup: number | null): (LayerMesh | null)[] {
+    const { x: X, z: Z } = this.#size
+    const { x0, y0, z0, x1, y1, z1 } = box
+    const firstGroup = onlyGroup ?? 0
+    const lastGroup = onlyGroup ?? GROUP_COUNT - 1
 
     // Pass 1: decide which groups are visible and count their quads.
     const visible: { layer: number; group: PreparedGroup; x: number; y: number; z: number }[] = []
@@ -123,10 +165,11 @@ export class Mesher {
           const prepared = this.#prepared[stateIndex]
           for (const layer of RENDER_LAYERS) {
             const groups = prepared[layer]
-            for (let group = 0; group < GROUP_COUNT; group++) {
+            for (let group = firstGroup; group <= lastGroup; group++) {
               const g = groups[group]
               if (!g) continue
-              if (group !== INNER_GROUP && this.#hidden(x, y, z, group, stateIndex, layer)) continue
+              const cull = onlyGroup === null && group !== INNER_GROUP
+              if (cull && this.#hidden(x, y, z, group, stateIndex, layer)) continue
               visible.push({ layer, group: g, x, y, z })
               quadCounts[layer] += g.geometry.quadCount
             }
@@ -167,7 +210,7 @@ export class Mesher {
       written[layer] += geometry.quadCount
     }
 
-    return { section: { x: sx, y: sy, z: sz }, layers }
+    return layers
   }
 
   /**

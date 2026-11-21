@@ -251,6 +251,7 @@ export const en: Messages = {
       sky: 'Sky',
     },
     panel: 'Panel',
+    layers: 'Layers',
     blocks: '{count} blocks',
     phase: {
       models: 'Preparing models…',
@@ -265,6 +266,38 @@ export const en: Messages = {
     missingTitle: 'Blocks without a model',
     missing:
       '{count} block types have no model in the loaded assets and are shown with the missing texture.',
+  },
+  layers: {
+    title: 'Layers',
+    mode: 'Visible layers',
+    modes: {
+      all: 'All',
+      single: 'Current only',
+      below: 'Up to current',
+      above: 'From current',
+      range: 'Range',
+    },
+    layer: 'Layer',
+    layerN: 'Layer {n}',
+    up: 'One layer up',
+    down: 'One layer down',
+    from: 'From',
+    to: 'To',
+    direction: 'Build',
+    directions: {
+      up: 'Bottom to top',
+      down: 'Top to bottom',
+    },
+    progress: '{done} of {total} layers built',
+    progressLabel: 'Build progress',
+    list: 'Layer list',
+    empty: 'empty',
+    status: {
+      done: 'Built',
+      current: 'Current',
+      pending: 'Pending',
+    },
+    keys: 'Page Up / Page Down: change layer',
   },
   toast: {
     region: 'Notifications',

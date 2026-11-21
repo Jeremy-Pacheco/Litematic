@@ -169,6 +169,14 @@ Mejoras aplicadas y medidas en esta funcionalidad:
 | Constantes del bake en un módulo sin Deepslate      | `mesher.worker.js` 235 kB       | 3 kB               |
 | Visor cargado bajo demanda                          | `index.js` 675 kB (180 kB gzip) | 96 kB (35 kB gzip) |
 
+## Capas (`feature/layer-system`)
+
+Cambiar de capa no reconstruye geometría: oculta secciones, mueve dos planos y pide como mucho dos
+tapas. En el terreno de 256 × 96 × 256 (65 536 posiciones por capa), con la GPU real, desde que
+se cambia de capa hasta que se dibujan las tapas: **~190 ms la primera vez** (el worker vuelve a
+la estructura tras el mallado) y **14–83 ms** después, según los bloques del nivel. Una tapa ya
+guardada se muestra en el siguiente frame. El visor sigue a 4,1 ms por frame de mediana.
+
 ## Compilación
 
 Tras `feature/structure-viewer`:

@@ -33,6 +33,9 @@ export class SceneManager {
   readonly #helpers = new Group()
   #grid: GridHelper | null = null
   #box: Box3Helper | null = null
+  #marker: Box3Helper | null = null
+  #markerY: number | null = null
+  #size = new Vector3()
   #frame = 0
   #disposed = false
 
@@ -43,6 +46,8 @@ export class SceneManager {
     this.#container = container
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Materials with clipping planes (layer system) are cut; others are not.
+    this.renderer.localClippingEnabled = true
     container.append(this.renderer.domElement)
 
     this.cameras = new CameraManager(this.renderer.domElement, () => this.requestRender())
@@ -74,6 +79,7 @@ export class SceneManager {
   /** Rebuilds the grid and bounding box for a structure of `size` blocks. */
   setBounds(size: Vector3): void {
     this.#clearHelpers()
+    this.#size.copy(size)
     const span = Math.max(size.x, size.z) + 4
     this.#grid = new GridHelper(span, span, 0x888888, 0x555555)
     this.#grid.position.set(size.x / 2, 0, size.z / 2)
@@ -83,12 +89,30 @@ export class SceneManager {
     this.#box = new Box3Helper(new Box3(new Vector3(0, 0, 0), size.clone()), 0xe08a55)
     this.#helpers.add(this.#grid, this.#box)
     this.cameras.setBounds(new Box3(new Vector3(0, 0, 0), size.clone()))
+    this.setLayerMarker(this.#markerY)
     this.requestRender()
   }
 
   setHelpers({ grid, box }: HelperOptions): void {
     if (this.#grid) this.#grid.visible = grid
     if (this.#box) this.#box.visible = box
+    this.requestRender()
+  }
+
+  /** Outlines level `y` of the structure (the layer being built), or hides the outline. */
+  setLayerMarker(y: number | null): void {
+    this.#markerY = y
+    if (this.#marker) {
+      this.#helpers.remove(this.#marker)
+      disposeObject(this.#marker)
+      this.#marker = null
+    }
+    if (y !== null && this.#size.y > 0) {
+      const { x, z } = this.#size
+      const box = new Box3(new Vector3(0, y, 0), new Vector3(x, y + 1, z))
+      this.#marker = new Box3Helper(box, MARKER_COLOR)
+      this.#helpers.add(this.#marker)
+    }
     this.requestRender()
   }
 
@@ -128,6 +152,7 @@ export class SceneManager {
     this.#helpers.clear()
     this.#grid = null
     this.#box = null
+    this.#marker = null
   }
 
   #onContextLost = (event: Event) => {
@@ -139,6 +164,9 @@ export class SceneManager {
     this.onContextRestored?.()
   }
 }
+
+/** Color of the current layer outline (the secondary color of the app, verdigris). */
+const MARKER_COLOR = 0x4fa89a
 
 /** Frees the GPU resources of an object and its children. */
 function disposeObject(object: Object3D): void {
