@@ -4,7 +4,7 @@
  * not depend on the texture images.
  */
 import { Identifier } from 'deepslate/core'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { readClientJar } from '../../src/lib/assets/minecraftJar'
 import {
   bakePalette,
@@ -66,8 +66,12 @@ const groupQuads = (baked: ReturnType<typeof bakeState>, layer: number, group: n
 const ALL_SIDES = 0b111111
 
 describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () => {
-  const { files } = readClientJar(new Uint8Array(fs.readFileSync(JAR)))
-  const resources = new GameResources(files)
+  // Read in beforeAll: a skipped suite still runs its body to collect its
+  // tests, and the jar only exists on the author's machine (not in CI).
+  let resources!: GameResources
+  beforeAll(() => {
+    resources = new GameResources(readClientJar(new Uint8Array(fs.readFileSync(JAR))).files)
+  })
 
   it('bakes a full opaque cube: one quad per side, covering and occluding every side', () => {
     const baked = bakeState(state('minecraft:stone'), resources, fakeAtlas())
