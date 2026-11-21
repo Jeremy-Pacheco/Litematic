@@ -44,6 +44,18 @@ describe('createLegacyTable', () => {
     expect(table.resolve(4000, 3)).toBeNull()
   })
 
+  it('renames the 1.13 ids that changed later, keeping their properties', () => {
+    expect(key(63, 4)).toBe('minecraft:oak_sign[rotation=4]')
+    expect(key(68, 2)).toBe('minecraft:oak_wall_sign[facing=north]')
+    expect(key(31, 1)).toBe('minecraft:short_grass')
+    expect(key(208, 0)).toBe('minecraft:dirt_path')
+    // The 1.13 stone slab was the smooth stone one.
+    expect(key(44, 0)).toBe('minecraft:smooth_stone_slab[type=bottom]')
+    expect(key(43, 0)).toBe('minecraft:smooth_stone_slab[type=double]')
+    // Unrelated ids are untouched.
+    expect(key(2, 0)).toBe('minecraft:grass_block[snowy=false]')
+  })
+
   it('caches results', () => {
     expect(table.resolve(35, 14)).toBe(table.resolve(35, 14))
   })

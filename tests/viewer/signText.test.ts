@@ -36,6 +36,17 @@ describe('signTextOf', () => {
     expect(message('texto sin JSON')).toBe('texto sin JSON')
   })
 
+  it('reads pre-1.11 signs (id "Sign", plain text lines before 1.8)', () => {
+    const old = compound([
+      ['Text1', 'Hola'],
+      ['Text2', ''],
+      ['Text3', ''],
+      ['Text4', ''],
+    ])
+    expect(signTextOf('Sign', old)?.front?.lines).toEqual(['Hola', '', '', ''])
+    expect(signTextOf('Banner', old)).toBeNull()
+  })
+
   it('reads pre-1.20 signs and Sponge v3 data', () => {
     const legacy = compound([
       ['Text1', '{"text":"Arriba"}'],

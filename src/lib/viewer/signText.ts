@@ -32,7 +32,8 @@ const MAX_LINE = 90
  * Sponge v3 keeps the data under `Data`. Returns `null` without any text.
  */
 export function signTextOf(id: string, nbt: NbtCompound): SignText | null {
-  if (!/(^|:)sign$/.test(id)) return null
+  // `Sign` before 1.11 (e.g. in `.schematic` files), `minecraft:sign` after.
+  if (!/(^|:)sign$/i.test(id)) return null
   const data = isNbtCompound(nbt.get('Data')) ? (nbt.get('Data') as NbtCompound) : nbt
   let front: SignSide | null
   let back: SignSide | null = null
