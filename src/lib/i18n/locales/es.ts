@@ -129,6 +129,48 @@ export const es = {
     approximateLegacy:
       'Archivo anterior a Minecraft 1.13: los bloques que dependen de sus vecinos (vallas, escaleras, puertas…) pueden verse con su forma por defecto.',
   },
+  materials: {
+    title: 'Materiales',
+    totals: '{items} ítems · {types} tipos',
+    progress: '{done} de {total} conseguidos',
+    hint: 'Escribe en «Tengo» cuántos tienes de cada material para ver cuántos te faltan.',
+    search: 'Buscar material',
+    sort: {
+      label: 'Ordenar',
+      required: 'Más necesarios',
+      missing: 'Más pendientes',
+      name: 'Nombre',
+    },
+    filter: {
+      label: 'Mostrar',
+      all: 'Todos',
+      pending: 'Pendientes',
+      done: 'Completos',
+    },
+    columns: {
+      material: 'Material',
+      required: 'Necesarios',
+      stacks: 'Stacks',
+      owned: 'Tengo',
+      missing: 'Faltan',
+    },
+    ownedLabel: 'Cantidad que tienes de {name}',
+    complete: 'Completo',
+    stacksValue: '{stacks} × {size} + {rest}',
+    stacksOnly: '{stacks} × {size}',
+    shulkers: '≈ {boxes} cajas de shulker',
+    clear: 'Borrar cantidades',
+    empty: 'Esta estructura no necesita materiales.',
+    noResults: 'Ningún material coincide con la búsqueda.',
+    namesNote:
+      'Nombres provisionales a partir del identificador del bloque. Los nombres oficiales llegarán al cargar los recursos de Minecraft.',
+    special: {
+      title: 'Fluidos y bloques no obtenibles',
+      hint: 'Los fluidos se colocan con un cubo. Los bloques no obtenibles no se pueden conseguir en supervivencia.',
+      fluid: 'Fluido (cubo)',
+      unobtainable: 'No obtenible',
+    },
+  },
   toast: {
     region: 'Notificaciones',
     close: 'Cerrar notificación',
