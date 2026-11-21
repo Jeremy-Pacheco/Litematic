@@ -15,7 +15,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | 7   | `feature/minecraft-assets`         | Carga de recursos desde el `client.jar` del usuario                        | ✅     |
 | 8   | `feature/block-models`             | Blockstates, modelos y atlas de texturas                                   | ✅     |
 | 9   | `feature/structure-viewer`         | Visor 3D                                                                   | ✅     |
-| 10  | `feature/layer-system`             | Construcción por capas                                                     | ⏳     |
+| 10  | `feature/layer-system`             | Construcción por capas                                                     | ✅     |
 | 11  | `feature/block-inspector`          | Selección e inspección de bloques                                          | ⏳     |
 | 12  | `feature/texture-packs`            | Resource packs personalizados                                              | ⏳     |
 | 13  | `feature/performance-optimization` | Optimización y mediciones de conjunto                                      | ⏳     |

@@ -12,7 +12,7 @@ src/
 │   │   ├── feedback/    Notificaciones
 │   │   ├── viewer/      Visor 3D: lienzo, barra de herramientas y pantalla
 │   │   ├── materials/   Lista de materiales (MaterialList, MaterialRow)
-│   │   ├── layers/      Selector de capas (pendiente)
+│   │   ├── layers/      Panel de capas (modo, capa actual, sentido, progreso, lista)
 │   │   └── dialogs/     Ventanas modales (pendiente)
 │   ├── data/            Datos generados (tabla de IDs antiguos) y sus licencias
 │   ├── i18n/            Idiomas: diccionarios y traducción
@@ -63,12 +63,15 @@ docs/                    Documentación
 | `models/bakedTypes.ts`                 | Tipos y constantes del bake sin Deepslate (los usa el mesher)                             |
 | `viewer/mesher.ts`                     | Secciones de 16³ → mallas por capa, caras ocultas, sombreado por cara                     |
 | `viewer/materials.ts`                  | Textura del atlas y un material por capa                                                  |
-| `workers/mesher.worker.ts`             | Genera las secciones fuera del hilo principal y las envía según se terminan               |
+| `workers/mesher.worker.ts`             | Genera las secciones y, después, las tapas de las capas, fuera del hilo principal         |
 | `managers/SceneManager.ts`             | Renderizador, escena, dibujado bajo demanda, ayudas, liberación, pérdida de contexto      |
 | `managers/CameraManager.ts`            | Controles orbitales, ajustar y vistas predefinidas                                        |
-| `managers/StructureManager.ts`         | Estructura → modelos → atlas → secciones en la escena (subida repartida por frames)       |
+| `managers/StructureManager.ts`         | Estructura → modelos → atlas → secciones; corte por capas sin reconstruir                 |
 | `stores/viewer.svelte.ts`              | Opciones del visor guardadas (cuadrícula, caja, fondo, panel)                             |
 | `import/openStructureFiles.ts`         | Abre archivos y comunica el resultado (importación y visor)                               |
+| `viewer/layers.ts`                     | Lógica de capas sin interfaz: rango visible, estado de cada capa, progreso                |
+| `stores/layers.svelte.ts`              | Selección de capas de la estructura; recuerda modo y sentido                              |
+| `components/layers/LayerPanel.svelte`  | Panel de capas del visor y atajos de teclado                                              |
 | `stores/assets.svelte.ts`              | Estado de los recursos para la interfaz y tabla de idioma                                 |
 | `components/dialogs/AssetsDialog`      | Diálogo «Recursos de Minecraft» (`<dialog>` nativo)                                       |
 | `components/layout/AssetsIndicator`    | Indicador de recursos en la barra superior                                                |

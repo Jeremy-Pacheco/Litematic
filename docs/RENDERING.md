@@ -1,7 +1,7 @@
 # Renderizado
 
-> **Estado:** la preparación de modelos y el **visor 3D** están implementados. El sistema de capas
-> (`feature/layer-system`) y el inspector de bloques (`feature/block-inspector`) están **pendientes**.
+> **Estado:** la preparación de modelos, el **visor 3D** y el **sistema de capas** están
+> implementados. El inspector de bloques (`feature/block-inspector`) está **pendiente**.
 
 ## Preparación de modelos («bake»)
 
@@ -129,6 +129,46 @@ estructura leída ─► App cambia al visor (ViewerScreen, cargado bajo demanda
 - Al cambiar de estructura se liberan geometrías, materiales y atlas; si el navegador pierde el
   contexto WebGL, se reconstruye al recuperarlo.
 - Mediciones en [PERFORMANCE.md](PERFORMANCE.md).
+
+## Sistema de capas (`feature/layer-system`)
+
+Una capa es un nivel Y de la estructura (la capa 1 es la de abajo). El panel **Capas** permite:
+
+- **Elegir qué se ve:** todas, solo la actual, hasta la actual, desde la actual o un rango.
+- **Cambiar de capa:** con las flechas del panel, escribiendo el número, pulsando una fila de la
+  lista, con ↑/↓/Inicio/Fin en la lista o con **Re Pág / Av Pág** en cualquier parte del visor.
+- **Construir de abajo arriba o de arriba abajo:** las capas ya recorridas en ese sentido se
+  marcan ✓, la actual ●, las pendientes ○. El progreso se mide **por bloques**, así las capas
+  vacías no cuentan.
+- La lista muestra los bloques de cada capa (`Structure.layerBlocks`, calculado al leer el
+  archivo en el mismo recorrido que cuenta los materiales).
+- La capa actual se marca en 3D con un contorno del color secundario.
+
+El modo y el sentido se recuerdan; la capa actual vuelve al principio con cada estructura. En
+pantallas estrechas el panel empieza cerrado para no tapar la vista.
+
+### Cómo se corta sin reconstruir la geometría
+
+```text
+setLayerRange({ min, max })
+  1. secciones fuera de [min, max] → visible = false   (menos draw calls)
+  2. dos planos de recorte en los materiales: y ≤ max + 1 − 0,01 y y ≥ min + 0,01
+  3. "tapas": caras superiores del nivel max e inferiores del nivel min   [mesher worker]
+```
+
+- **El problema:** la geometría no incluye las caras ocultas por el bloque de encima. Al ocultar
+  las capas superiores, el corte mostraría huecos.
+- **Los planos** se comparten entre los materiales: moverlos no cambia los shaders ni toca la
+  geometría. Se colocan 0,01 bloques **dentro** de la zona visible, así todas las caras que caen
+  justo en el corte se eliminan siempre (sin parpadeos por precisión).
+- **Las tapas** son las caras de ese lado de todos los bloques del nivel, **sin** quitar las
+  ocultas (`Mesher.meshCap`). Usan materiales sin recorte y cierran el corte. Las genera el
+  worker de geometría, que ahora **sigue vivo** con la estructura hasta que se cambia de
+  estructura. Se guardan las 8 últimas, así volver a una capa reciente es inmediato.
+- Si el corte coincide con el borde de la estructura no hay plano ni tapa en ese lado.
+
+Limitaciones: un modelo que sobresale de su bloque por arriba (p. ej. un estandarte de pie) se
+corta en el plano; con la tapa recién pedida, el corte puede verse abierto unos milisegundos.
 
 ## Limitaciones conocidas
 

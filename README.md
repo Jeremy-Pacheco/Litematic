@@ -6,7 +6,8 @@ Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Lite
 > comprueba que son válidos y los lee por completo (bloques, paleta, regiones y entidades; los
 > `.schematic` antiguos se traducen a bloques modernos). Los **muestra en 3D con las texturas de
 > tu propio Minecraft** (cargando su `client.jar`) y calcula la **lista de materiales** con lo
-> que te falta. Pendiente: capas, inspector de bloques y resource packs. Consulta
+> que te falta, y permite **construir por capas** con su progreso. Pendiente: inspector de
+> bloques y resource packs. Consulta
 > [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada funcionalidad.
 
 ## Objetivo
