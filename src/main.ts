@@ -5,6 +5,7 @@ import App from './App.svelte'
 import { i18n } from './lib/i18n/i18n.svelte'
 import { assets } from './lib/stores/assets.svelte'
 import { layers } from './lib/stores/layers.svelte'
+import { resourcePack } from './lib/stores/resourcePack.svelte'
 import { theme } from './lib/stores/theme.svelte'
 import { viewer } from './lib/stores/viewer.svelte'
 
@@ -13,6 +14,7 @@ theme.init()
 i18n.init()
 // Restores cached game assets in the background; the app works without them.
 void assets.init()
+void resourcePack.init()
 viewer.init()
 layers.init()
 
