@@ -14,7 +14,7 @@
   const views: ViewPreset[] = ['iso', 'top', 'front', 'side']
   const backgrounds: ViewerBackground[] = ['theme', 'dark', 'light', 'sky']
 
-  function toggle(key: 'grid' | 'box' | 'panelOpen'): void {
+  function toggle(key: 'grid' | 'box' | 'layersOpen' | 'panelOpen'): void {
     viewer[key] = !viewer[key]
     viewer.save()
   }
@@ -72,6 +72,17 @@
       {/each}
     </select>
   </label>
+
+  <button
+    type="button"
+    class="tool"
+    aria-pressed={viewer.layersOpen}
+    title={i18n.t('viewer.layers')}
+    onclick={() => toggle('layersOpen')}
+  >
+    <Icon name="layers" size={15} />
+    <span class="label">{i18n.t('viewer.layers')}</span>
+  </button>
 
   <button
     type="button"

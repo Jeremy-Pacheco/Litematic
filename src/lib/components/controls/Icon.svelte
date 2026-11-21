@@ -23,6 +23,9 @@
       'M2 2.5h12a.5.5 0 0 1 .5.5v10a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5z',
       'M10 2.5v11',
     ],
+    layers: ['M8 2 14 5 8 8 2 5z', 'M2 8l6 3 6-3', 'M2 11l6 3 6-3'],
+    chevronUp: ['M4 10l4-4 4 4'],
+    chevronDown: ['M4 6l4 4 4-4'],
   } as const satisfies Record<string, readonly string[]>
 
   export type IconName = keyof typeof ICONS
