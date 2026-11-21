@@ -2,10 +2,10 @@
 
 Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Litematica.
 
-> **Estado:** en desarrollo temprano. Ya existe la interfaz base (temas oscuro, claro y
-> automático; español e inglés; pantalla de importación), pero **todavía no lee ni muestra
-> estructuras**. Consulta [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada
-> funcionalidad.
+> **Estado:** en desarrollo temprano. La app ya abre archivos `.litematic`, `.schem` y
+> `.schematic`, comprueba que son válidos y muestra su formato, dimensiones y versión, pero
+> **todavía no interpreta ni muestra los bloques**. Consulta
+> [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada funcionalidad.
 
 ## Objetivo
 
@@ -17,15 +17,15 @@ Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Lite
 
 ## Tecnologías
 
-| Área        | Herramienta             |
-| ----------- | ----------------------- |
-| Interfaz    | Svelte 5 + TypeScript   |
-| Compilación | Vite                    |
-| Render 3D   | Three.js _(pendiente)_  |
-| NBT         | Deepslate _(pendiente)_ |
-| Tests       | Vitest                  |
-| Calidad     | ESLint + Prettier       |
-| Paquetes    | pnpm                    |
+| Área        | Herramienta                                            |
+| ----------- | ------------------------------------------------------ |
+| Interfaz    | Svelte 5 + TypeScript                                  |
+| Compilación | Vite                                                   |
+| Render 3D   | Three.js _(pendiente)_                                 |
+| NBT         | Lector propio (lectura) + Deepslate (escritura, tests) |
+| Tests       | Vitest                                                 |
+| Calidad     | ESLint + Prettier                                      |
+| Paquetes    | pnpm                                                   |
 
 ## Requisitos
 
@@ -45,6 +45,7 @@ pnpm format         # formatear con Prettier
 pnpm format:check   # comprobar el formato sin modificar
 pnpm test           # ejecutar los tests una vez
 pnpm test:watch     # tests en modo observación
+pnpm test:perf      # mediciones de memoria y tiempo (más lento; no forma parte de pnpm test)
 ```
 
 ## Documentación
