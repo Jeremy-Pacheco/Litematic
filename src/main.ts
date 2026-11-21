@@ -3,6 +3,7 @@ import './lib/styles/tokens.css'
 import './app.css'
 import App from './App.svelte'
 import { i18n } from './lib/i18n/i18n.svelte'
+import { consent } from './lib/stores/consent.svelte'
 import { assets } from './lib/stores/assets.svelte'
 import { layers } from './lib/stores/layers.svelte'
 import { resourcePack } from './lib/stores/resourcePack.svelte'
@@ -16,6 +17,7 @@ i18n.init()
 void assets.init()
 void resourcePack.init()
 viewer.init()
+consent.init()
 layers.init()
 
 const target = document.getElementById('app')

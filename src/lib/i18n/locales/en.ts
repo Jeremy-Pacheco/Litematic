@@ -177,7 +177,7 @@ export const en: Messages = {
     title: 'Minecraft assets',
     open: 'Load Minecraft assets',
     close: 'Close',
-    hint: 'With the assets of your Minecraft you will see the official block names and, later, their textures.',
+    hint: 'Load the assets of your Minecraft to see structures in 3D with their textures and the official block names.',
     intro:
       'LitematicViewer uses the models, textures and names of your own copy of Minecraft Java. Select the client.jar of the version you play: it is read once and stored in this browser.',
     privacy:
@@ -362,6 +362,50 @@ export const en: Messages = {
     indicator: 'Pack: {name}',
     notZipTitle: 'Not a .zip file',
     notZip: '{name} is not a ZIP file.',
+  },
+  cookies: {
+    title: 'Privacy and cookies',
+    close: 'Close',
+    settings: 'Your choice',
+    bannerTitle: 'Analytics cookies',
+    bannerText:
+      'With your permission we use Google Analytics to learn, in aggregate, how many people use the site. Your files never leave your device.',
+    policyLink: 'Learn more',
+    accept: 'Accept',
+    reject: 'Reject',
+    analyticsTitle: 'Analytics (Google Analytics)',
+    analyticsText:
+      'Aggregated visit statistics. Only enabled if you accept, and you can withdraw your permission at any time.',
+    stateAccepted: 'Currently: accepted.',
+    stateRejected: 'Currently: rejected.',
+    stateUndecided: 'You have not chosen yet; meanwhile they are off.',
+    policyTitle: 'Cookie policy',
+    policyWho:
+      'Controller: Jéremy Paul Pacheco Oña (jeremypacheco.es). LitematicViewer runs in your browser.',
+    policyFiles:
+      'Structures, the client.jar and resource packs are processed on your device: they are not sent to any server or to Google Analytics.',
+    policyTechnical:
+      'Preferences (theme, language, viewer options and your cookie choice) and the Minecraft assets are kept in your browser local storage. They are needed for the app to work and need no consent; you can delete them in your browser settings.',
+    policyGoogle:
+      'If you accept, Google Analytics 4 (Google Ireland Ltd.) records page views and technical browser data. It is not used for advertising: Google signals and ad personalisation are off. Google may process data outside the EU under the EU-US Data Privacy Framework.',
+    policyWithdraw:
+      'You can change your choice at any time with the cookie button in the top bar. If you reject after accepting, no more data is sent and the Analytics cookies are deleted. You are asked again after a year.',
+    googlePrivacy: 'Google privacy',
+    googleOptOut: 'Google Analytics opt-out add-on',
+    table: {
+      name: 'Name',
+      type: 'Type',
+      purpose: 'Purpose',
+      duration: 'Duration',
+      local: 'Local storage',
+      cookie: 'Cookie (Google)',
+      prefs: 'Preferences and cookie choice (technical)',
+      assets: 'Minecraft assets extracted from your client.jar (technical)',
+      ga: 'Tell visitors apart anonymously (analytics)',
+      gaSession: 'Keep the session state (analytics)',
+      untilDeleted: 'Until you delete it',
+      twoYears: '2 years',
+    },
   },
   toast: {
     region: 'Notifications',

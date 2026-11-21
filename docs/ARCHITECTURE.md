@@ -260,6 +260,22 @@ Los bloques sin entrada propia (estandartes y carteles de pared…) toman el nom
 los coloca. Sin recursos, el nombre es el id legible (`minecraft:oak_stairs` → «Oak stairs»).
 Todavía no hay iconos; no se usan iconos inventados.
 
+## Privacidad y cookies
+
+- Los archivos del usuario (estructuras, `client.jar`, resource packs) se procesan en el
+  navegador y nunca se envían a ningún sitio, tampoco a Analytics.
+- **Google Analytics 4** solo existe en el build de producción (`VITE_GA_ID` en
+  `.env.production`) y **solo se carga tras aceptar** las cookies de análisis
+  (`analytics/googleAnalytics.ts`). Antes no se descarga ningún script de Google ni se crea
+  ninguna cookie. Consent Mode v2: todo denegado por defecto, solo se concede
+  `analytics_storage`; publicidad, señales de Google y personalización desactivadas. Solo se
+  miden páginas vistas.
+- `stores/consent.svelte.ts` guarda la elección (`lv:consent`, almacenamiento técnico) y la
+  vuelve a pedir al cabo de un año o si cambia la versión del consentimiento.
+- Banner al primer acceso con «Aceptar» y «Rechazar» iguales; botón de cookies en la barra
+  superior para cambiar la elección y leer la política. Retirar el consentimiento desactiva la
+  etiqueta y borra las cookies `_ga`.
+
 ## Principios
 
 - **`App.svelte` no contiene lógica de negocio.** Solo compone componentes.

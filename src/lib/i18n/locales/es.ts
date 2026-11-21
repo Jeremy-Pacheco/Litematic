@@ -185,7 +185,7 @@ export const es = {
     title: 'Recursos de Minecraft',
     open: 'Cargar recursos de Minecraft',
     close: 'Cerrar',
-    hint: 'Con los recursos de tu Minecraft verás los nombres oficiales de los bloques y, más adelante, sus texturas.',
+    hint: 'Carga los recursos de tu Minecraft para ver las estructuras en 3D con sus texturas y los nombres oficiales de los bloques.',
     intro:
       'LitematicViewer usa los modelos, texturas y nombres de tu propia copia de Minecraft Java. Selecciona el client.jar de la versión que uses: se lee una sola vez y se guarda en este navegador.',
     privacy:
@@ -372,6 +372,50 @@ export const es = {
     indicator: 'Pack: {name}',
     notZipTitle: 'No es un archivo .zip',
     notZip: '{name} no es un archivo ZIP.',
+  },
+  cookies: {
+    title: 'Privacidad y cookies',
+    close: 'Cerrar',
+    settings: 'Tu elección',
+    bannerTitle: 'Cookies de análisis',
+    bannerText:
+      'Con tu permiso usamos Google Analytics para saber, de forma agregada, cuántas personas usan la web. Tus archivos nunca salen de tu equipo.',
+    policyLink: 'Más información',
+    accept: 'Aceptar',
+    reject: 'Rechazar',
+    analyticsTitle: 'Análisis (Google Analytics)',
+    analyticsText:
+      'Estadísticas de visitas agregadas. Solo se activan si aceptas y puedes retirar el permiso cuando quieras.',
+    stateAccepted: 'Ahora mismo: aceptadas.',
+    stateRejected: 'Ahora mismo: rechazadas.',
+    stateUndecided: 'Aún no has elegido; mientras tanto están desactivadas.',
+    policyTitle: 'Política de cookies',
+    policyWho:
+      'Responsable: Jéremy Paul Pacheco Oña (jeremypacheco.es). LitematicViewer funciona en tu navegador.',
+    policyFiles:
+      'Las estructuras, el client.jar y los resource packs se procesan en tu equipo: no se envían a ningún servidor ni a Google Analytics.',
+    policyTechnical:
+      'Las preferencias (tema, idioma, opciones del visor y tu elección sobre cookies) y los recursos de Minecraft se guardan en el almacenamiento local de tu navegador. Son necesarios para que la app funcione y no requieren consentimiento; puedes borrarlos desde la configuración del navegador.',
+    policyGoogle:
+      'Si aceptas, Google Analytics 4 (Google Ireland Ltd.) registra páginas vistas y datos técnicos del navegador. No se usan para publicidad: las señales de Google y la personalización de anuncios están desactivadas. Google puede tratar datos fuera de la UE con las garantías del Marco de Privacidad de Datos UE-EE. UU.',
+    policyWithdraw:
+      'Puedes cambiar tu elección en cualquier momento desde el botón de cookies de la barra superior. Si rechazas después de aceptar, se dejan de enviar datos y se borran las cookies de Analytics. La elección se vuelve a preguntar al cabo de un año.',
+    googlePrivacy: 'Privacidad de Google',
+    googleOptOut: 'Complemento de inhabilitación de Google Analytics',
+    table: {
+      name: 'Nombre',
+      type: 'Tipo',
+      purpose: 'Finalidad',
+      duration: 'Duración',
+      local: 'Almacenamiento local',
+      cookie: 'Cookie (Google)',
+      prefs: 'Preferencias y elección sobre cookies (técnica)',
+      assets: 'Recursos de Minecraft extraídos de tu client.jar (técnica)',
+      ga: 'Distinguir visitantes de forma anónima (análisis)',
+      gaSession: 'Mantener el estado de la sesión (análisis)',
+      untilDeleted: 'Hasta que la borres',
+      twoYears: '2 años',
+    },
   },
   toast: {
     region: 'Notificaciones',

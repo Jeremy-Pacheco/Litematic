@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import { disableAnalytics, enableAnalytics, measurementId } from '../../analytics/googleAnalytics'
+  import { consent } from '../../stores/consent.svelte'
   import AssetsDialog from '../dialogs/AssetsDialog.svelte'
+  import CookieBanner from '../dialogs/CookieBanner.svelte'
+  import CookieDialog from '../dialogs/CookieDialog.svelte'
   import Toaster from '../feedback/Toaster.svelte'
   import TopBar from './TopBar.svelte'
 
@@ -9,6 +13,16 @@
   }
 
   let { children }: Props = $props()
+
+  // Analytics only exists in builds with a measurement id (production).
+  const analyticsId = measurementId()
+
+  // Google Analytics runs only while the user has accepted it.
+  $effect(() => {
+    if (!analyticsId || !consent.decided) return
+    if (consent.analytics) enableAnalytics(analyticsId)
+    else disableAnalytics(analyticsId)
+  })
 </script>
 
 <div class="shell">
@@ -18,6 +32,12 @@
   </main>
   <Toaster />
   <AssetsDialog />
+  {#if analyticsId}
+    <CookieDialog />
+    {#if !consent.decided && !consent.dialogOpen}
+      <CookieBanner />
+    {/if}
+  {/if}
 </div>
 
 <style>
