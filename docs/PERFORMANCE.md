@@ -118,16 +118,29 @@ Medido con `pnpm test:perf` (`tests/perf/mceditParser.perf.test.ts`): 512 × 256
 - La tabla de materiales tiene como mucho unos cientos de filas, así que no necesita
   virtualización.
 
+## Recursos del juego (`feature/minecraft-assets`)
+
+| Medición (client.jar 26.3, 40 MB)                     | Resultado                       |
+| ----------------------------------------------------- | ------------------------------- |
+| Extracción en Node (test con el jar real)             | 10 138 archivos, 4,5 MB, 158 ms |
+| Carga completa en Chrome (leer + extraer + IndexedDB) | ~0,3–0,6 s                      |
+| Tamaño en IndexedDB                                   | ~4,3 MB                         |
+
+- Todo ocurre en un worker que se destruye al terminar: los 40 MB del jar no quedan en memoria.
+- Solo se descomprimen las entradas de la lista blanca (≈ 30 % de las entradas, 4,5 MB).
+- Al arrancar solo se leen de IndexedDB los metadatos y el idioma, no los 4 MB de archivos.
+
 ## Compilación
 
-Tras `feature/material-list`:
+Tras `feature/minecraft-assets`:
 
-| Archivo               |   Tamaño |     gzip |
-| --------------------- | -------: | -------: |
-| `index.js`            | 92,21 kB | 34,00 kB |
-| `index.css`           | 15,97 kB |  3,35 kB |
-| `structure.worker.js` | 19,36 kB |        — |
-| `legacyBlocks.js`     | 99,26 kB |  12,3 kB |
+| Archivo               |    Tamaño |     gzip |
+| --------------------- | --------: | -------: |
+| `index.js`            | 106,51 kB | 37,70 kB |
+| `index.css`           |  19,21 kB |  3,83 kB |
+| `structure.worker.js` |  19,36 kB |        — |
+| `assets.worker.js`    |  11,23 kB |        — |
+| `legacyBlocks.js`     |  99,26 kB |  12,3 kB |
 
 Deepslate no se incluye en el build: por ahora solo lo usan los tests.
 
