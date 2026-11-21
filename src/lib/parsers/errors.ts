@@ -8,6 +8,8 @@ export const STRUCTURE_ERROR_CODES = [
   'too-large',
   'invalid-nbt',
   'unknown-format',
+  'invalid-structure',
+  'structure-too-large',
   'out-of-memory',
   'read-failed',
   'cancelled',
