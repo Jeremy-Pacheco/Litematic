@@ -22,6 +22,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | 14  | `feature/legacy-schematic-states`  | `.schematic`: estados de vecinos y de block entities                       | ✅     |
 | —   | `fix/legacy-block-renames`         | `.schematic`: nombres de bloque renombrados después de la 1.13             | ✅     |
 | —   | `fix/block-state-upgrade`          | Puesta al día de estados de archivos 1.13+ (todos los formatos)            | ✅     |
+| —   | `fix/waterlogged-fluids`           | El agua de los bloques anegados se une al agua de alrededor                | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

@@ -97,7 +97,7 @@ interface Box {
 /** The parts of a baked state the mesher needs. */
 export type MesherState = Pick<
   BakedState,
-  'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty' | 'fluid' | 'fluidFull'
+  'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty' | 'fluid' | 'fluidGeometry' | 'fluidFull'
 >
 
 /**
@@ -112,6 +112,9 @@ interface PreparedGroup {
   uvs: Uint16Array
 }
 
+/** `[layer][group]`, like `QuadGeometry` groups. */
+type PreparedLayers = (PreparedGroup | null)[][]
+
 export class Mesher {
   readonly #size: Vec3
   readonly #blocks: Uint16Array | Uint32Array
@@ -119,9 +122,12 @@ export class Mesher {
   readonly #yStart: number
   readonly #yEnd: number
   readonly #states: readonly MesherState[]
-  readonly #prepared: (PreparedGroup | null)[][][]
-  /** Full-height shape of fluid blocks (`null` for other states). */
-  readonly #preparedFull: ((PreparedGroup | null)[][] | null)[]
+  /** Per state: the model, and the fluid it holds (normal and full height). */
+  readonly #prepared: PreparedLayers[]
+  /** Whether the model has any quad (water and lava have none). */
+  readonly #hasModel: boolean[]
+  readonly #preparedFluid: (PreparedLayers | null)[]
+  readonly #preparedFull: (PreparedLayers | null)[]
 
   constructor(input: MesherInput) {
     this.#size = input.size
@@ -129,9 +135,13 @@ export class Mesher {
     this.#yStart = input.yStart ?? 0
     this.#yEnd = this.#yStart + input.blocks.length / (input.size.x * input.size.z)
     this.#states = input.states
-    const prepareAll = (geometry: (QuadGeometry | null)[][]) =>
+    const prepareAll = (geometry: (QuadGeometry | null)[][]): PreparedLayers =>
       geometry.map((groups) => groups.map((g) => (g ? prepare(g) : null)))
     this.#prepared = input.states.map((state) => prepareAll(state.geometry))
+    this.#hasModel = input.states.map((state) => state.geometry.some((l) => l.some(Boolean)))
+    this.#preparedFluid = input.states.map((state) =>
+      state.fluidGeometry ? prepareAll(state.fluidGeometry) : null,
+    )
     this.#preparedFull = input.states.map((state) =>
       state.fluidFull ? prepareAll(state.fluidFull) : null,
     )
@@ -195,19 +205,27 @@ export class Mesher {
           const stateIndex = this.#blocks[((y - this.#yStart) * Z + z) * X + x]
           const state = this.#states[stateIndex]
           if (!state || state.empty) continue
-          // A fluid with the same fluid above fills its whole block.
-          const full = this.#preparedFull[stateIndex]
-          const prepared =
-            full && this.#fluidAt(x, y + 1, z) === state.fluid ? full : this.#prepared[stateIndex]
-          for (const layer of RENDER_LAYERS) {
-            const groups = prepared[layer]
-            for (let group = firstGroup; group <= lastGroup; group++) {
-              const g = groups[group]
-              if (!g) continue
-              const cull = onlyGroup === null && group !== INNER_GROUP
-              if (cull && this.#hidden(x, y, z, group, stateIndex, layer)) continue
-              visible.push({ layer, group: g, x, y, z })
-              quadCounts[layer] += g.geometry.quadCount
+          // The model, then the fluid it holds: with the same fluid above, the
+          // fluid fills its whole block.
+          const fluid = this.#preparedFluid[stateIndex]
+          const firstPart = this.#hasModel[stateIndex] ? 0 : 1
+          for (let part = firstPart; part < (fluid ? 2 : 1); part++) {
+            const isFluid = part === 1
+            const prepared = !isFluid
+              ? this.#prepared[stateIndex]
+              : this.#fluidAt(x, y + 1, z) === state.fluid
+                ? (this.#preparedFull[stateIndex] ?? fluid!)
+                : fluid!
+            for (const layer of RENDER_LAYERS) {
+              const groups = prepared[layer]
+              for (let group = firstGroup; group <= lastGroup; group++) {
+                const g = groups[group]
+                if (!g) continue
+                const cull = onlyGroup === null && group !== INNER_GROUP
+                if (cull && this.#hidden(x, y, z, group, stateIndex, layer, isFluid)) continue
+                visible.push({ layer, group: g, x, y, z })
+                quadCounts[layer] += g.geometry.quadCount
+              }
             }
           }
         }
@@ -264,8 +282,10 @@ export class Mesher {
 
   /**
    * A face on side `group` is hidden when the neighbor covers the opposite
-   * side with opaque faces, or when both are the same see-through block
-   * covering the shared side (glass next to glass).
+   * side with opaque faces. A fluid face is also hidden next to the same
+   * fluid (water beside water or a waterlogged block); a model face, when
+   * both are the same see-through block covering the shared side (glass next
+   * to glass).
    */
   #hidden(
     x: number,
@@ -274,6 +294,7 @@ export class Mesher {
     group: number,
     stateIndex: number,
     layer: number,
+    isFluid: boolean,
   ): boolean {
     const [dx, dy, dz] = OFFSETS[group]
     const nx = x + dx
@@ -286,9 +307,8 @@ export class Mesher {
     if (!neighbor || neighbor.empty) return false
     const opposite = 1 << OPPOSITE[group]
     if (neighbor.opaqueFaces & opposite) return true
-    // Fluid next to the same fluid (water beside water or a waterlogged block).
     const state = this.#states[stateIndex]
-    if (state.fluidFull && neighbor.fluid === state.fluid) return true
+    if (isFluid) return neighbor.fluid === state.fluid
     if (layer !== 0 && neighborIndex === stateIndex) {
       return (state.fullFaces & (1 << group)) !== 0 && (neighbor.fullFaces & opposite) !== 0
     }

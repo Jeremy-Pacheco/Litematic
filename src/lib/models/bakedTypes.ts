@@ -26,12 +26,18 @@ export interface QuadGeometry {
   normals: Float32Array
 }
 
+/** `[layer][group]`: groups 0–5 follow `FACES`, 6 is never culled. */
+export type LayeredGeometry = (QuadGeometry | null)[][]
+
 export interface BakedState {
-  /** `geometry[layer][group]`: groups 0–5 follow `FACES`, 6 is never culled. */
-  geometry: (QuadGeometry | null)[][]
-  /** Bit `i` set: side `FACES[i]` is completely covered by an opaque face. */
+  /**
+   * The block's own model, without the fluid it holds (empty for water and
+   * lava themselves).
+   */
+  geometry: LayeredGeometry
+  /** Bit `i` set: side `FACES[i]` of the model is completely covered by an opaque face. */
   opaqueFaces: number
-  /** Bit `i` set: side `FACES[i]` is completely covered (any layer). */
+  /** Bit `i` set: side `FACES[i]` of the model is completely covered (any layer). */
   fullFaces: number
   /** No model was found: drawn with the missing texture. */
   missing: boolean
@@ -39,15 +45,17 @@ export interface BakedState {
   empty: boolean
   /**
    * Fluid that fills the position: `FLUID_NONE`, `FLUID_WATER` (water,
-   * waterlogged blocks, kelp, seagrass, bubble columns) or `FLUID_LAVA`. Faces
-   * of a fluid block next to the same fluid are hidden, as in the game.
+   * waterlogged blocks, kelp, seagrass, bubble columns) or `FLUID_LAVA`. Its
+   * faces next to the same fluid are hidden, as in the game.
    */
   fluid: number
+  /** Geometry of that fluid (surface below the top). `null` without fluid. */
+  fluidGeometry: LayeredGeometry | null
   /**
-   * Fluid blocks only: geometry with the same fluid above (full height, no
-   * top face). `null` for every other block.
+   * Geometry of that fluid with the same fluid above: full height, its
+   * surface on the top side. `null` without fluid.
    */
-  fluidFull: (QuadGeometry | null)[][] | null
+  fluidFull: LayeredGeometry | null
 }
 
 export const FLUID_NONE = 0

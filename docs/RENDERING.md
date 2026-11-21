@@ -25,13 +25,16 @@ API: `ModelManager.bake(palette)` → `BakedModels`.
 
 ### Resultado por estado (`BakedState`)
 
-| Campo         | Contenido                                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------------------------- |
-| `geometry`    | `geometry[capa][grupo]`: posiciones (0–1), UV, color de tinte y normales por vértice, 4 vértices por quad |
-| `opaqueFaces` | Bit por lado: el lado está **totalmente cubierto por caras opacas**                                       |
-| `fullFaces`   | Bit por lado: el lado está totalmente cubierto (cualquier capa)                                           |
-| `missing`     | El bloque no tiene modelo: se dibuja con la textura de «falta textura»                                    |
-| `empty`       | Nada que dibujar (aire)                                                                                   |
+| Campo           | Contenido                                                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geometry`      | Modelo del bloque, **sin el fluido**. `geometry[capa][grupo]`: posiciones (0–1), UV, color de tinte y normales por vértice, 4 vértices por quad |
+| `opaqueFaces`   | Bit por lado: el lado del modelo está **totalmente cubierto por caras opacas**                                                                  |
+| `fullFaces`     | Bit por lado: el lado del modelo está totalmente cubierto (cualquier capa)                                                                      |
+| `missing`       | El bloque no tiene modelo: se dibuja con la textura de «falta textura»                                                                          |
+| `empty`         | Nada que dibujar (aire)                                                                                                                         |
+| `fluid`         | Fluido que ocupa la posición: ninguno, agua (agua, bloques anegados, algas, praderas, burbujas) o lava                                          |
+| `fluidGeometry` | Geometría de ese fluido, con la superficie por debajo del borde (o `null`)                                                                      |
+| `fluidFull`     | El mismo fluido a altura completa, para cuando encima hay el mismo fluido (o `null`)                                                            |
 
 **Grupos:** 0–5 = caras que están sobre el lado `up, down, north, south, east, west` del bloque; 6 =
 caras interiores, que nunca se ocultan. Una cara pertenece a un lado si todos sus vértices están en
@@ -58,15 +61,17 @@ cristal), se usará `fullFaces`.
 
 Minecraft no guarda la capa en los recursos, así que se deduce del **canal alfa de cada textura**
 (`classifyAlpha`). La capa se decide **por cara**, no por bloque: una escalera inundada
-(`waterlogged`) tiene caras opacas y agua translúcida.
+(`waterlogged`) tiene caras opacas y agua translúcida. El agua se guarda aparte del modelo
+(`fluidGeometry`), para que el mesher la una con el agua vecina sin tocar las caras del bloque.
 
 ### Bloques especiales
 
 Los bloques que Minecraft dibuja como entidades no tienen modelo JSON y se generan con los
 `SpecialRenderers` de Deepslate: cofres, estandartes, cabezas, cajas de shulker, campanas,
 macetas decoradas y fluidos. Si el juego ya trae modelo JSON del bloque (en 26.x, carteles y
-camas), se usa ese modelo y no el de Deepslate, que pediría texturas de rutas antiguas; a un bloque
-anegado se le sigue añadiendo el agua.
+camas), se usa ese modelo y no el de Deepslate, que pediría texturas de rutas antiguas. Los fluidos
+se generan siempre aparte (`fluidMeshOf`): Deepslate recibe el bloque sin `waterlogged`, para que su
+agua no se dibuje dos veces.
 
 ### Texto de los carteles (`viewer/signText.ts`, `viewer/signTextMeshes.ts`)
 
@@ -118,10 +123,13 @@ estructura leída ─► App cambia al visor (ViewerScreen, cargado bajo demanda
 - **Eliminación de caras ocultas:** una cara del lado `d` se omite si el vecino en `d` cubre el
   lado opuesto con caras opacas (`opaqueFaces`), o si es el mismo estado no opaco y ambos cubren
   el lado compartido (cristal contra cristal). Las caras interiores (grupo 6) nunca se omiten.
-- **Fluidos:** una cara de agua o lava junto al mismo fluido se omite (también junto a bloques
-  anegados, algas y burbujas). Un fluido con el mismo fluido encima usa su forma a altura completa
-  (sin franjas entre capas de agua). Así un lago es una superficie, como en el juego, y no miles de
-  caras internas.
+- **Fluidos:** el modelo y el fluido de cada bloque se recorren por separado. Una cara del fluido se
+  omite junto al mismo fluido (agua, bloques anegados, algas, burbujas) o junto a un lado opaco, y
+  con el mismo fluido encima se usa la forma a altura completa (sin franjas entre capas de agua).
+  Así un lago o un bosque de algas es un solo volumen, como en el juego, y no una superficie por
+  bloque; las caras del modelo de un bloque anegado se mantienen. En un mar sintético de
+  64 × 32 × 64 con un 20 % de columnas de algas, las caras translúcidas bajaron de 69 764 a 12 032,
+  sin cambio apreciable en el tiempo de mallado (unos 41 ms antes; entre 37 y 43 ms después).
 - Formato compacto de vértices: posiciones `Float32`, UV `Uint16` normalizadas, color `Uint8`
   normalizado e índices `Uint16` cuando caben. Ocupa menos de la mitad que todo en 32 bits.
 - **Varios workers** (`viewer/meshingPlan.ts`): con más de 200 000 bloques se usan hasta 4
@@ -238,8 +246,8 @@ también al pulsar en el aire de su celda.
 
 ## Limitaciones conocidas
 
-- **Fluidos:** la altura de la superficie se prepara sin conocer el bloque de encima; en columnas de
-  agua pueden verse superficies internas. Se resolverá en el visor si es necesario.
+- **Fluidos:** todo fluido es una fuente quieta (altura de su `level`); no se calcula la inclinación
+  del agua que corre ni la altura según los bloques vecinos.
 - **Estandartes:** solo el color base; los patrones (que están en el block entity) llegarán más
   adelante. Los carteles no muestran su texto.
 - **Texturas animadas:** se usa el primer fotograma.

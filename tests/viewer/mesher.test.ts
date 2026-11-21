@@ -39,6 +39,7 @@ function cube(layer: number, opaque: boolean): MesherState {
     fullFaces: ALL,
     empty: false,
     fluid: 0,
+    fluidGeometry: null,
     fluidFull: null,
   }
 }
@@ -49,6 +50,7 @@ const AIR: MesherState = {
   fullFaces: 0,
   empty: true,
   fluid: 0,
+  fluidGeometry: null,
   fluidFull: null,
 }
 const STONE = cube(RenderLayer.Opaque, true)
@@ -148,28 +150,34 @@ describe('Mesher caps', () => {
 })
 
 describe('Mesher fluids', () => {
-  /** Water: sides and bottom on their sides, surface below the top (inner group). */
-  function water(): MesherState {
+  const emptyLayers = () =>
+    [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
+
+  /** A state holding water: sides and bottom on their sides, surface below the top (inner group). */
+  function withWater(model: MesherState): MesherState {
     const layer = RenderLayer.Translucent
-    const normal = [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
-    const full = [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
+    const normal = emptyLayers()
+    const full = emptyLayers()
     for (let side = 1; side < 6; side++) {
       normal[layer][side] = quad(side)
       full[layer][side] = quad(side)
     }
     normal[layer][INNER_GROUP] = quad(0) // surface at 14/16
     full[layer][0] = quad(0) // surface at full height
-    return {
-      geometry: normal,
-      opaqueFaces: 0,
-      fullFaces: 0b111110,
-      empty: false,
-      fluid: 1,
-      fluidFull: full,
-    }
+    return { ...model, empty: false, fluid: 1, fluidGeometry: normal, fluidFull: full }
   }
+  /** Water itself: no model, only the fluid. */
+  const water = () => withWater({ ...AIR, geometry: emptyLayers() })
+  /** A waterlogged plant (kelp, seagrass): a cutout model that covers no side. */
+  const plant = (): MesherState => {
+    const geometry = emptyLayers()
+    geometry[RenderLayer.Cutout][INNER_GROUP] = quad(2)
+    return withWater({ ...AIR, geometry, empty: false })
+  }
+  const quadsOf = (size: [number, number, number], blocks: number[], states: MesherState[]) =>
+    mesh(size, blocks, states).quads
   const translucent = (size: [number, number, number], blocks: number[], states: MesherState[]) =>
-    mesh(size, blocks, states).quads[RenderLayer.Translucent]
+    quadsOf(size, blocks, states)[RenderLayer.Translucent]
 
   it('hides the faces between water blocks', () => {
     expect(translucent([1, 1, 1], [1], [AIR, water()])).toBe(6)
@@ -179,14 +187,29 @@ describe('Mesher fluids', () => {
     expect(translucent([1, 2, 1], [1, 1], [AIR, water()])).toBe(10)
   })
 
-  it('treats waterlogged blocks as water for the neighbouring water', () => {
-    const wetGlass = { ...GLASS, fluid: 1 }
-    // Water (1) beside waterlogged glass (2): the water face towards the glass is hidden.
-    expect(translucent([2, 1, 1], [1, 2], [AIR, water(), wetGlass])).toBe(5)
+  it('joins the water of waterlogged blocks with the water around them', () => {
+    // Water (1) beside waterlogged glass (2): both waters lose the shared side.
+    expect(quadsOf([2, 1, 1], [1, 2], [AIR, water(), withWater(GLASS)])).toEqual([0, 6, 10])
+    // A column of kelp under water: one volume, the surface only at the top.
+    // Water on top: 6 − bottom; each plant: 4 sides, the lowest one also its bottom.
+    expect(quadsOf([1, 4, 1], [2, 2, 2, 1], [AIR, water(), plant()])).toEqual([0, 3, 5 + 13])
+  })
+
+  it('keeps the model faces of a waterlogged block next to water', () => {
+    // The glass faces stay (water is not opaque); only its water is joined.
+    expect(quadsOf([3, 1, 1], [1, 2, 1], [AIR, water(), withWater(GLASS)])[1]).toBe(6)
+  })
+
+  it('hides a fluid face behind an opaque block, but not next to air', () => {
+    expect(translucent([2, 1, 1], [1, 2], [AIR, water(), STONE])).toBe(5)
+    expect(translucent([2, 1, 1], [1, 0], [AIR, water()])).toBe(6)
   })
 
   it('keeps the full-height surface for a layer cut', () => {
     const mesher = mesh([1, 2, 1], [1, 1], [AIR, water()]).mesher
     expect(mesher.meshCap(0, 'up')[RenderLayer.Translucent]!.quadCount).toBe(1)
+    // Also under a waterlogged block.
+    const wet = mesh([1, 2, 1], [1, 2], [AIR, water(), plant()]).mesher
+    expect(wet.meshCap(0, 'up')[RenderLayer.Translucent]!.quadCount).toBe(1)
   })
 })
