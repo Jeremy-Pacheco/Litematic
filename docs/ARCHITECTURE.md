@@ -234,6 +234,16 @@ Un bloque colocado no siempre equivale a un ítem del mismo id. Reglas, por orde
 
 Bloques de otros namespaces (mods) se cuentan con su propio id.
 
+### Materiales por capa
+
+En el visor, la lista puede contar **toda** la estructura, la **capa actual** o las **capas
+visibles** (según el modo del panel de capas); la elección se recuerda. `materials/layerCounts.ts`
+calcula los recuentos por estado de un rango de capas: la primera vez construye una tabla capa ×
+estado en una pasada (como mucho 16 MB; si fuera mayor, cada consulta recorre solo sus capas), y
+cada rango después es una suma sobre esa tabla, así cambiar de capa no vuelve a recorrer la
+estructura. Las cantidades «Tengo» son las mismas: lo que falta se calcula contra lo que pide el
+alcance elegido.
+
 ### Cantidades del usuario
 
 - La lista muestra **lo necesario**. Opcionalmente, en «Tengo», el usuario escribe cuántos tiene y

@@ -2,6 +2,10 @@ import { readStorage, writeStorage } from '../utils/storage'
 
 export type ViewerBackground = 'theme' | 'dark' | 'light' | 'sky'
 
+/** Which blocks the material list counts. */
+export type MaterialScope = 'all' | 'layer' | 'visible'
+export const MATERIAL_SCOPES: readonly MaterialScope[] = ['all', 'layer', 'visible']
+
 /** Background colors; `theme` follows the app theme. */
 export const BACKGROUND_COLORS: Readonly<Record<Exclude<ViewerBackground, 'theme'>, string>> = {
   dark: '#101214',
@@ -18,6 +22,7 @@ interface ViewerSettings {
   background: ViewerBackground
   panelOpen: boolean
   layersOpen: boolean
+  materialScope: MaterialScope
 }
 
 const DEFAULTS: ViewerSettings = {
@@ -26,6 +31,7 @@ const DEFAULTS: ViewerSettings = {
   background: 'theme',
   panelOpen: true,
   layersOpen: true,
+  materialScope: 'all',
 }
 
 /** Parses saved settings, falling back to defaults for anything invalid. */
@@ -50,6 +56,9 @@ export function parseViewerSettings(raw: string | null): ViewerSettings {
     panelOpen: bool('panelOpen'),
     layersOpen: bool('layersOpen'),
     background,
+    materialScope: MATERIAL_SCOPES.includes(v.materialScope as MaterialScope)
+      ? (v.materialScope as MaterialScope)
+      : DEFAULTS.materialScope,
   }
 }
 
@@ -65,6 +74,7 @@ class ViewerState {
   background = $state<ViewerBackground>(DEFAULTS.background)
   panelOpen = $state(DEFAULTS.panelOpen)
   layersOpen = $state(DEFAULTS.layersOpen)
+  materialScope = $state<MaterialScope>(DEFAULTS.materialScope)
 
   init(): void {
     const raw = readStorage(STORAGE_KEY)
@@ -78,6 +88,7 @@ class ViewerState {
     this.background = saved.background
     this.panelOpen = saved.panelOpen
     this.layersOpen = saved.layersOpen
+    this.materialScope = saved.materialScope
   }
 
   save(): void {
@@ -87,6 +98,7 @@ class ViewerState {
       background: this.background,
       panelOpen: this.panelOpen,
       layersOpen: this.layersOpen,
+      materialScope: this.materialScope,
     }
     writeStorage(STORAGE_KEY, JSON.stringify(settings))
   }

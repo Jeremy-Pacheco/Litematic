@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import { i18n } from '../../i18n/i18n.svelte'
   import { itemDisplayName, type Material, type MaterialList } from '../../materials/materialList'
   import { assets } from '../../stores/assets.svelte'
@@ -10,9 +11,11 @@
 
   interface Props {
     list: MaterialList
+    /** Optional control shown under the title (which blocks are counted). */
+    scope?: Snippet
   }
 
-  let { list }: Props = $props()
+  let { list, scope }: Props = $props()
 
   type SortKey = 'required' | 'missing' | 'name'
   type Filter = 'all' | 'pending' | 'done'
@@ -78,6 +81,8 @@
         })}
       </p>
     </div>
+
+    {@render scope?.()}
 
     <div class="progress">
       <div class="progress-label">
