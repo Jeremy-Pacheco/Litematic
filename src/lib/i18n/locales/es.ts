@@ -24,6 +24,7 @@ export const es = {
     formats: '.litematic · .schem · .schematic',
     open: 'Abrir archivo',
     dropHere: 'Suelta el archivo para abrirlo',
+    dropAssets: 'También puedes soltar aquí tu client.jar o un resource pack (.zip).',
     localNote: 'Los archivos se procesan en tu navegador. No se suben a ningún servidor.',
     openAnother: 'Abrir otro archivo',
     selected: 'Archivo seleccionado',

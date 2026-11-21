@@ -1,5 +1,6 @@
 <script lang="ts">
   import { STRUCTURE_ACCEPT } from '../../constants/formats'
+  import { openDroppedFiles } from '../../import/openAssetFiles'
   import { openStructureFiles } from '../../import/openStructureFiles'
   import { i18n } from '../../i18n/i18n.svelte'
   import { LayerCounts } from '../../materials/layerCounts'
@@ -54,7 +55,7 @@
   }
 </script>
 
-<WindowDropTarget bind:dragging onfiles={openStructureFiles} />
+<WindowDropTarget bind:dragging onfiles={openDroppedFiles} />
 
 <div class="screen" class:panel-open={viewer.panelOpen}>
   <section class="stage">

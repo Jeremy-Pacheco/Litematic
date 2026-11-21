@@ -1,7 +1,7 @@
 <script lang="ts">
   import { STRUCTURE_ACCEPT } from '../../constants/formats'
   import { i18n } from '../../i18n/i18n.svelte'
-  import { openStructureFiles } from '../../import/openStructureFiles'
+  import { openDroppedFiles } from '../../import/openAssetFiles'
   import { assets } from '../../stores/assets.svelte'
   import { importState } from '../../stores/importState.svelte'
   import DropZone from './DropZone.svelte'
@@ -18,7 +18,7 @@
   const current = $derived(importState.current)
 </script>
 
-<WindowDropTarget bind:dragging onfiles={openStructureFiles} />
+<WindowDropTarget bind:dragging onfiles={openDroppedFiles} />
 
 <div class="screen">
   {#if status.kind === 'reading' && current}
@@ -28,7 +28,7 @@
       oncancel={() => importState.cancel()}
     />
   {:else}
-    <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={openStructureFiles} />
+    <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={openDroppedFiles} />
     {#if assets.status.kind === 'none'}
       <p class="assets-hint">
         {i18n.t('assets.hint')}
@@ -38,6 +38,7 @@
       </p>
     {/if}
   {/if}
+  <p class="note">{i18n.t('import.dropAssets')}</p>
   <p class="note">{i18n.t('import.localNote')}</p>
 </div>
 

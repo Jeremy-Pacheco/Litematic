@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
   import { assets } from '../../stores/assets.svelte'
+  import { importClientJar } from '../../import/openAssetFiles'
   import { toasts } from '../../stores/toasts.svelte'
   import { formatBytes, formatCount } from '../../utils/format'
   import Button from '../controls/Button.svelte'
@@ -21,22 +22,7 @@
   const count = (value: number) => formatCount(value, i18n.locale)
 
   async function onFiles(files: File[]): Promise<void> {
-    const [file] = files
-    if (!file) return
-    const outcome = await assets.importJar(file)
-    if (outcome.kind === 'ready') {
-      toasts.push({
-        kind: 'success',
-        title: { key: 'assets.readyTitle' },
-        message: { key: 'assets.ready', params: { version: outcome.meta.version.id } },
-      })
-    } else {
-      toasts.push({
-        kind: outcome.code === 'cancelled' ? 'info' : 'error',
-        title: { key: `assets.errors.${outcome.code}.title` },
-        message: { key: `assets.errors.${outcome.code}.message`, params: { name: file.name } },
-      })
-    }
+    if (files[0]) await importClientJar(files[0])
   }
 
   async function remove(): Promise<void> {

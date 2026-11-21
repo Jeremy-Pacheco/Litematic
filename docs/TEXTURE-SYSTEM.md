@@ -97,7 +97,9 @@ Detalles en [RENDERING.md](RENDERING.md).
 ## Resource packs (`feature/texture-packs`)
 
 El usuario puede importar **un** resource pack `.zip` desde el diálogo de recursos (indicador
-de la barra superior). Se aplica **sobre** los recursos de su `client.jar`: lo que el pack no
+de la barra superior) o **soltándolo sobre la ventana**; un `.jar` soltado se carga como recursos
+del juego (`import/openAssetFiles.ts` decide por la extensión y los lectores comprueban el
+contenido). Se aplica **sobre** los recursos de su `client.jar`: lo que el pack no
 tiene se toma del juego, así que hacen falta los recursos cargados.
 
 ### Qué se lee (`assets/resourcePack.ts`)
