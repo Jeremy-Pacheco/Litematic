@@ -24,15 +24,17 @@ no se suben a ningún servidor. Con tu permiso se usa Google Analytics para cont
 
 ## Tecnologías
 
-| Área        | Herramienta                                            |
-| ----------- | ------------------------------------------------------ |
-| Interfaz    | Svelte 5 + TypeScript                                  |
-| Compilación | Vite                                                   |
-| Render 3D   | Three.js                                               |
-| NBT         | Lector propio (lectura) + Deepslate (escritura, tests) |
-| Tests       | Vitest                                                 |
-| Calidad     | ESLint + Prettier                                      |
-| Paquetes    | pnpm                                                   |
+| Área        | Herramienta                                               |
+| ----------- | --------------------------------------------------------- |
+| Interfaz    | Svelte 5 + TypeScript                                     |
+| Compilación | Vite                                                      |
+| Render 3D   | Three.js                                                  |
+| Modelos     | Deepslate (modelos de bloque y renderizadores especiales) |
+| NBT         | Lector propio                                             |
+| ZIP         | fflate                                                    |
+| Tests       | Vitest                                                    |
+| Calidad     | ESLint + Prettier                                         |
+| Paquetes    | pnpm                                                      |
 
 ## Requisitos
 
@@ -75,6 +77,26 @@ desde su instalación de Minecraft, de forma totalmente local.
 
 LitematicViewer no está afiliado ni respaldado por Mojang Studios ni por Microsoft.
 Minecraft es una marca de Mojang Synergies AB.
+
+## Créditos
+
+LitematicViewer se apoya en estos proyectos de código abierto. Gracias a sus autores:
+
+- **[Deepslate](https://github.com/misode/deepslate)** de **Misode** (MIT): lee los modelos de
+  bloque de Minecraft y dibuja cofres, estandartes y fluidos. Es la base del visor 3D.
+- **[Three.js](https://threejs.org)** de mrdoob y colaboradores (MIT): render 3D con WebGL.
+- **[fflate](https://github.com/101arrowz/fflate)** de Arjun Barrett (MIT): lectura del
+  `client.jar` y de los resource packs.
+- **[Svelte](https://svelte.dev)** (MIT): la interfaz.
+- **[minecraft-data](https://github.com/PrismarineJS/minecraft-data)** de PrismarineJS (MIT):
+  tabla de IDs antiguos para los `.schematic`.
+
+Cada build genera `licenses.txt` con la licencia completa de todo el software incluido en la web
+(también las dependencias de Deepslate). En la app, el botón de información de la barra superior
+muestra los créditos.
+
+LitematicViewer no es un producto oficial de Minecraft. No está aprobado por Mojang ni Microsoft
+ni asociado con ellos.
 
 ## Licencia
 

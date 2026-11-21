@@ -5,6 +5,7 @@
   import AssetsDialog from '../dialogs/AssetsDialog.svelte'
   import CookieBanner from '../dialogs/CookieBanner.svelte'
   import CookieDialog from '../dialogs/CookieDialog.svelte'
+  import CreditsDialog from '../dialogs/CreditsDialog.svelte'
   import Toaster from '../feedback/Toaster.svelte'
   import TopBar from './TopBar.svelte'
 
@@ -32,6 +33,7 @@
   </main>
   <Toaster />
   <AssetsDialog />
+  <CreditsDialog />
   {#if analyticsId}
     <CookieDialog />
     {#if !consent.decided && !consent.dialogOpen}
