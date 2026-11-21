@@ -68,7 +68,8 @@ export const es = {
       },
       'invalid-structure': {
         title: 'Estructura no válida',
-        message: 'Los datos de bloques de {name} son incoherentes: {detail}',
+        message:
+          'Los datos de bloques de {name} son incoherentes o están incompletos. El archivo puede estar dañado.',
       },
       'structure-too-large': {
         title: 'Estructura demasiado grande',
