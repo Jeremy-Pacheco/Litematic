@@ -73,6 +73,16 @@ camas), se usa ese modelo y no el de Deepslate, que pediría texturas de rutas a
 se generan siempre aparte (`fluidMeshOf`): Deepslate recibe el bloque sin `waterlogged`, para que su
 agua no se dibuje dos veces.
 
+### Giros por eje de 26.x (`models/elementRotation.ts`)
+
+Desde 26.x un elemento de modelo puede girarse con un ángulo por eje
+(`"rotation": {"x": 180, "y": -67.5, "z": -180, …}`) además de la forma clásica `axis` + `angle`,
+que es la única que lee Deepslate. Al leer cada modelo (`GameResources`), esos giros se aplican en
+orden X, Y, Z y, si equivalen a un giro alrededor de un solo eje, se reescriben en la forma
+clásica. En el jar 26.3 solo lo usa `template_hanging_sign_rot_3` (colgantes sin enganchar con
+`rotation` 3, 7, 11 y 15), cuyo giro se reduce a uno en Y. Un giro que no se reduzca a un eje se
+deja tal cual y el bloque se dibuja como «falta modelo», como antes.
+
 ### Texto de los carteles (`viewer/signText.ts`, `viewer/signTextMeshes.ts`)
 
 El texto se lee del block entity en todos sus formatos (`front_text`/`back_text` de 1.20+, con
@@ -94,10 +104,8 @@ colgante es más cuadrada (14 × 10) que la casilla (2 : 1), así que el texto s
 para que la letra no salga estirada. Un test comprueba con el jar real y con Deepslate que, en
 todas las rotaciones, el texto de cada lado queda pegado a su cara de la tabla y derecho.
 
-Color de tinte del juego, oscurecido salvo con texto brillante (que lleva contorno). Limitaciones:
-la letra es la del sistema, no la del juego; los colgantes sin enganchar con `rotation` 3, 7, 11 y
-15 no tienen modelo en 26.x (su JSON gira un elemento con ángulos `x`/`y`/`z`, que Deepslate no lee)
-y se dibujan como «falta modelo».
+Color de tinte del juego, oscurecido salvo con texto brillante (que lleva contorno). Limitación: la
+letra es la del sistema, no la del juego.
 
 ### Estandartes con dibujos (`models/blockEntityRender.ts`)
 
