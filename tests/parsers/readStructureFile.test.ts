@@ -44,7 +44,7 @@ describe('readStructureFile', () => {
     expect(phases.at(-1)).toBe('decoding')
   })
 
-  it('returns no structure for formats without a parser yet', async () => {
+  it('parses Sponge schematics', async () => {
     const sponge = await compress(
       encodeNbt({
         Version: int(2),
@@ -52,12 +52,28 @@ describe('readStructureFile', () => {
         Width: short(1),
         Height: short(1),
         Length: short(1),
-        Palette: compound({ 'minecraft:air': int(0) }),
+        Palette: compound({ 'minecraft:stone': int(0) }),
         BlockData: byteArray(new Int8Array(1)),
       }),
     )
     const { info, structure } = await readStructureFile(new Blob([sponge as BlobPart]))
     expect(info.format).toBe('schem')
+    expect(structure?.nonAirBlocks).toBe(1)
+  })
+
+  it('returns no structure for formats without a parser yet (MCEdit)', async () => {
+    const mcedit = await compress(
+      encodeNbt({
+        Width: short(1),
+        Height: short(1),
+        Length: short(1),
+        Materials: str('Alpha'),
+        Blocks: byteArray(new Int8Array(1)),
+        Data: byteArray(new Int8Array(1)),
+      }),
+    )
+    const { info, structure } = await readStructureFile(new Blob([mcedit as BlobPart]))
+    expect(info.format).toBe('schematic')
     expect(structure).toBeNull()
   })
 

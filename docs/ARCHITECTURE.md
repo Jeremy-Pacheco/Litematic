@@ -48,6 +48,10 @@ docs/                    Documentación
 | `parsers/structureBuilder.ts`          | Paleta global sin duplicados, límite de tamaño y reserva del array de bloques             |
 | `parsers/litematic/bitArray.ts`        | Decodificador del empaquetado de bits de Litematica                                       |
 | `parsers/litematic/LitematicParser.ts` | `.litematic` → `Structure` (regiones, tamaños negativos, entidades, metadatos)            |
+| `parsers/blockStateString.ts`          | Interpreta `id[clave=valor,…]` como `BlockState`                                          |
+| `parsers/sponge/varint.ts`             | Lector secuencial de varints sin copia                                                    |
+| `parsers/sponge/SpongeParser.ts`       | `.schem` v1/v2/v3 → `Structure`                                                           |
+| `utils/structureTitle.ts`              | Título visible: nombre de la estructura o, si es genérico, nombre del archivo             |
 | `parsers/nbt/decompress.ts`            | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
 | `parsers/nbt/NbtReader.ts`             | Lector NBT binario con validación de longitudes y profundidad                             |
 | `parsers/nbt/modifiedUtf8.ts`          | Decodificación de cadenas en UTF-8 modificado de Java                                     |
@@ -136,8 +140,8 @@ StructureSummary (formato, dimensiones, bloques, paleta, regiones, avisos…) + 
 6. Los errores llegan con un código (`too-large`, `invalid-nbt`…) que se traduce a una
    notificación. Ver [NBT-FORMATS.md](NBT-FORMATS.md).
 
-Parsers disponibles: Litematica. Para `.schem` y `.schematic` se muestra el resumen del archivo
-y se indica que sus bloques aún no se interpretan.
+Parsers disponibles: Litematica y Sponge. Para `.schematic` se muestra el resumen del archivo y
+se indica que sus bloques aún no se interpretan.
 
 ## Principios
 

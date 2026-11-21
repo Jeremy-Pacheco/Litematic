@@ -3,9 +3,11 @@ import type { Structure } from '../types/structure'
 import type { StructureFormat } from '../constants/formats'
 import { detectFormat, type DetectedFormat } from './detectFormat'
 import { StructureReadError } from './errors'
-import { parseLitematic, type ParseProgressCallback } from './litematic/LitematicParser'
+import { parseLitematic } from './litematic/LitematicParser'
 import { decompressBlob, type Compression, type DecompressOptions } from './nbt/decompress'
 import { readNbt } from './nbt/NbtReader'
+import { parseSponge } from './sponge/SpongeParser'
+import type { ParseProgressCallback } from './structureBuilder'
 
 export type ReadPhase = 'decompressing' | 'parsing' | 'decoding'
 
@@ -39,6 +41,7 @@ type StructureParser = (root: NbtCompound, onProgress?: ParseProgressCallback) =
 /** Block parsers available so far. The rest arrive in their own features. */
 const PARSERS: Partial<Record<StructureFormat, StructureParser>> = {
   litematic: parseLitematic,
+  schem: parseSponge,
 }
 
 /**

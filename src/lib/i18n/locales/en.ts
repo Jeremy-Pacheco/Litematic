@@ -64,7 +64,7 @@ export const en: Messages = {
       },
       'invalid-structure': {
         title: 'Invalid structure',
-        message: 'The block data of {name} is inconsistent: {detail}',
+        message: 'The block data of {name} is inconsistent or incomplete. The file may be damaged.',
       },
       'structure-too-large': {
         title: 'Structure too large',
