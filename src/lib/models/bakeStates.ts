@@ -9,6 +9,14 @@ import {
 import { isAirId } from '../parsers/blockState'
 import type { BlockState } from '../types/structure'
 import type { GameResources } from './gameResources'
+import {
+  FACES,
+  GROUP_COUNT,
+  INNER_GROUP,
+  MISSING_TEXTURE,
+  type BakedState,
+  type QuadGeometry,
+} from './bakedTypes'
 import { RENDER_LAYERS, RenderLayer } from './renderLayer'
 
 /**
@@ -18,45 +26,20 @@ import { RENDER_LAYERS, RenderLayer } from './renderLayer'
  * without looking at models again. Done once per palette state, not per block.
  */
 
-/** Sides in group order. Group 6 holds faces that are never culled. */
-export const FACES = ['up', 'down', 'north', 'south', 'east', 'west'] as const
-export type Face = (typeof FACES)[number]
-export const INNER_GROUP = 6
-export const GROUP_COUNT = 7
-
-/** Texture id used for blocks without a model or with a missing texture. */
-export const MISSING_TEXTURE = 'litematicviewer:missing'
+export {
+  FACES,
+  GROUP_COUNT,
+  INNER_GROUP,
+  MISSING_TEXTURE,
+  type BakedState,
+  type Face,
+  type QuadGeometry,
+} from './bakedTypes'
 
 /** An atlas the baker can query: UVs (deepslate interface) and render layers. */
 export interface BakeAtlas extends TextureAtlasProvider {
   /** Render layer of the texture at normalized atlas coordinates. */
   layerAt(u: number, v: number): RenderLayer
-}
-
-/** Flat vertex data of a group of quads (4 vertices per quad). */
-export interface QuadGeometry {
-  quadCount: number
-  /** xyz per vertex, block space 0–1. */
-  positions: Float32Array
-  /** uv per vertex, normalized atlas coordinates (v pointing down). */
-  uvs: Float32Array
-  /** rgb tint per vertex (1,1,1 when untinted). */
-  colors: Float32Array
-  /** xyz normal per vertex. */
-  normals: Float32Array
-}
-
-export interface BakedState {
-  /** `geometry[layer][group]`: groups 0–5 follow `FACES`, 6 is never culled. */
-  geometry: (QuadGeometry | null)[][]
-  /** Bit `i` set: side `FACES[i]` is completely covered by an opaque face. */
-  opaqueFaces: number
-  /** Bit `i` set: side `FACES[i]` is completely covered (any layer). */
-  fullFaces: number
-  /** No model was found: drawn with the missing texture. */
-  missing: boolean
-  /** Nothing to draw (air). */
-  empty: boolean
 }
 
 export interface BakeResult {
@@ -127,7 +110,9 @@ export function bakeState(
   }
 
   return {
-    geometry: buckets.map((groups) => groups.map((g) => (g.length ? toGeometry(g) : null))),
+    geometry: buckets.map((groups) =>
+      groups.map((g) => (g.length ? toGeometry(g, atlas.getPixelSize?.() ?? 0) : null)),
+    ),
     opaqueFaces: coverageMask(opaqueCoverage),
     fullFaces: coverageMask(anyCoverage),
     missing: result === null,
@@ -209,18 +194,32 @@ function layerOf(quad: Quad, atlas: BakeAtlas): RenderLayer {
   return atlas.layerAt(u, vv)
 }
 
-function toGeometry(quads: Quad[]): QuadGeometry {
+/**
+ * Fraction of an atlas pixel by which UVs are moved towards the centre of
+ * their quad. Without it, nearest-neighbour sampling at the very edge of a
+ * face can read the neighbouring texture in the atlas (visible as stray
+ * coloured dots on distant blocks).
+ */
+const UV_INSET_PIXELS = 0.05
+
+function toGeometry(quads: Quad[], pixelSize: number): QuadGeometry {
   const n = quads.length * 4
   const positions = new Float32Array(n * 3)
   const uvs = new Float32Array(n * 2)
   const colors = new Float32Array(n * 3)
   const normals = new Float32Array(n * 3)
+  const inset = pixelSize * UV_INSET_PIXELS
   let i = 0
   for (const quad of quads) {
     const normal = quad.normal()
-    for (const vertex of quad.vertices()) {
+    const vertices = quad.vertices()
+    const quadUvs = vertices.map((v) => v.texture ?? [0, 0])
+    const cu = quadUvs.reduce((s, t) => s + t[0], 0) / 4
+    const cv = quadUvs.reduce((s, t) => s + t[1], 0) / 4
+    for (const [k, vertex] of vertices.entries()) {
+      const [u, v] = quadUvs[k]
       positions.set([vertex.pos.x, vertex.pos.y, vertex.pos.z], i * 3)
-      uvs.set(vertex.texture ?? [0, 0], i * 2)
+      uvs.set([u + Math.sign(cu - u) * inset, v + Math.sign(cv - v) * inset], i * 2)
       colors.set(vertex.color ?? [1, 1, 1], i * 3)
       normals.set([normal.x, normal.y, normal.z], i * 3)
       i++

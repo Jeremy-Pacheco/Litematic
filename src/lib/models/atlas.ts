@@ -53,29 +53,44 @@ export async function buildAtlas(
       ? bitmap.width
       : bitmap.height
 
+  // Every texture gets a 1-pixel gutter repeating its edge pixels, so
+  // sampling slightly outside a face's region (unavoidable at a distance with
+  // nearest filtering) reads the same texture instead of its neighbour.
   const layout = packAtlas([
-    { id: MISSING_TEXTURE, width: 16, height: 16 },
+    { id: MISSING_TEXTURE, width: 16 + 2 * GUTTER, height: 16 + 2 * GUTTER },
     ...[...bitmaps].map(([id, bitmap]) => ({
       id,
-      width: bitmap.width,
-      height: frameHeight(id, bitmap),
+      width: bitmap.width + 2 * GUTTER,
+      height: frameHeight(id, bitmap) + 2 * GUTTER,
     })),
   ])
+  const inner = new Map(
+    [...layout.placements].map(([id, p]) => [
+      id,
+      {
+        x: p.x + GUTTER,
+        y: p.y + GUTTER,
+        width: p.width - 2 * GUTTER,
+        height: p.height - 2 * GUTTER,
+      },
+    ]),
+  )
 
   const canvas = new OffscreenCanvas(layout.size, layout.size)
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) throw new Error('2D canvas is not available in this worker')
   ctx.imageSmoothingEnabled = false
 
-  drawMissing(ctx, layout.placements.get(MISSING_TEXTURE)!)
+  drawMissing(ctx, inner.get(MISSING_TEXTURE)!)
   for (const [id, bitmap] of bitmaps) {
-    const p = layout.placements.get(id)!
+    const p = inner.get(id)!
     ctx.drawImage(bitmap, 0, 0, p.width, p.height, p.x, p.y, p.width, p.height)
     bitmap.close()
   }
+  for (const p of inner.values()) extrudeEdges(ctx, canvas, p)
 
   const pixels = ctx.getImageData(0, 0, layout.size, layout.size).data
-  const regions = [...layout.placements].map(([id, p]) => ({
+  const regions = [...inner].map(([id, p]) => ({
     id,
     p,
     layer: classifyAlpha(regionPixels(pixels, layout.size, p)),
@@ -112,6 +127,21 @@ export async function buildAtlas(
       return RenderLayer.Opaque
     },
   }
+}
+
+/** Width of the border around each texture, in pixels. */
+const GUTTER = 1
+
+/** Copies the outermost rows and columns of a texture into its gutter. */
+function extrudeEdges(
+  ctx: OffscreenCanvasRenderingContext2D,
+  canvas: OffscreenCanvas,
+  { x, y, width: w, height: h }: Placement,
+): void {
+  ctx.drawImage(canvas, x, y, 1, h, x - 1, y, 1, h) // left
+  ctx.drawImage(canvas, x + w - 1, y, 1, h, x + w, y, 1, h) // right
+  ctx.drawImage(canvas, x - 1, y, w + 2, 1, x - 1, y - 1, w + 2, 1) // top (with corners)
+  ctx.drawImage(canvas, x - 1, y + h - 1, w + 2, 1, x - 1, y + h, w + 2, 1) // bottom
 }
 
 function regionPixels(pixels: Uint8ClampedArray, size: number, p: Placement): Uint8ClampedArray {
