@@ -1,4 +1,3 @@
-import { DEFAULT_BIOME, isBiomeId, type BiomeId } from '../models/biomes'
 import { readStorage, writeStorage } from '../utils/storage'
 
 export type ViewerBackground = 'theme' | 'dark' | 'light' | 'sky'
@@ -24,7 +23,6 @@ interface ViewerSettings {
   panelOpen: boolean
   layersOpen: boolean
   materialScope: MaterialScope
-  biome: BiomeId
 }
 
 const DEFAULTS: ViewerSettings = {
@@ -34,7 +32,6 @@ const DEFAULTS: ViewerSettings = {
   panelOpen: true,
   layersOpen: true,
   materialScope: 'all',
-  biome: DEFAULT_BIOME,
 }
 
 /** Parses saved settings, falling back to defaults for anything invalid. */
@@ -62,7 +59,6 @@ export function parseViewerSettings(raw: string | null): ViewerSettings {
     materialScope: MATERIAL_SCOPES.includes(v.materialScope as MaterialScope)
       ? (v.materialScope as MaterialScope)
       : DEFAULTS.materialScope,
-    biome: isBiomeId(v.biome) ? v.biome : DEFAULTS.biome,
   }
 }
 
@@ -79,7 +75,6 @@ class ViewerState {
   panelOpen = $state(DEFAULTS.panelOpen)
   layersOpen = $state(DEFAULTS.layersOpen)
   materialScope = $state<MaterialScope>(DEFAULTS.materialScope)
-  biome = $state<BiomeId>(DEFAULTS.biome)
 
   init(): void {
     const raw = readStorage(STORAGE_KEY)
@@ -94,7 +89,6 @@ class ViewerState {
     this.panelOpen = saved.panelOpen
     this.layersOpen = saved.layersOpen
     this.materialScope = saved.materialScope
-    this.biome = saved.biome
   }
 
   save(): void {
@@ -105,7 +99,6 @@ class ViewerState {
       panelOpen: this.panelOpen,
       layersOpen: this.layersOpen,
       materialScope: this.materialScope,
-      biome: this.biome,
     }
     writeStorage(STORAGE_KEY, JSON.stringify(settings))
   }

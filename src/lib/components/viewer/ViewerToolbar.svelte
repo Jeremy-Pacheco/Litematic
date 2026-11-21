@@ -3,7 +3,6 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import { openStructureFiles } from '../../import/openStructureFiles'
   import type { ViewPreset } from '../../managers/CameraManager'
-  import { BIOMES, type BiomeId } from '../../models/biomes'
   import { viewer, type ViewerBackground } from '../../stores/viewer.svelte'
   import Icon from '../controls/Icon.svelte'
 
@@ -92,22 +91,6 @@
     >
       {#each backgrounds as background (background)}
         <option value={background}>{i18n.t(`viewer.backgrounds.${background}`)}</option>
-      {/each}
-    </select>
-  </label>
-
-  <label class="tool select" title={i18n.t('viewer.biomeHint')}>
-    <span class="label">{i18n.t('viewer.biome')}</span>
-    <select
-      value={viewer.biome}
-      aria-label={i18n.t('viewer.biome')}
-      onchange={(e) => {
-        viewer.biome = (e.currentTarget as HTMLSelectElement).value as BiomeId
-        viewer.save()
-      }}
-    >
-      {#each BIOMES as biome (biome)}
-        <option value={biome}>{i18n.t(`viewer.biomes.${biome}`)}</option>
       {/each}
     </select>
   </label>
