@@ -109,13 +109,14 @@ export function bakeState(
   const fluid = fluidOf(state)
   const fluidMesh = fluidMeshOf(state, fluid, atlas, {})
   const missing = model === null && !(fluidMesh && FLUID_BLOCKS.has(state.name))
-  const quads = missing ? missingCube(atlas) : (model?.quads ?? [])
+  const quads = missing ? missingCube(atlas) : (model?.mesh.quads ?? [])
   const fluidGeometry = fluidMesh ? sortQuads(fluidMesh.quads, atlas).geometry : null
   // With the same fluid above: full height and no top face.
   const fullMesh = fluidGeometry ? fluidMeshOf(state, fluid, atlas, { up: true }) : null
   return {
     ...sortQuads(quads, atlas),
     missing,
+    specialModel: model?.special ?? false,
     empty: quads.length === 0 && fluidGeometry === null,
     fluid,
     fluidGeometry,
@@ -244,18 +245,22 @@ function sortQuads(
   }
 }
 
-/** Mesh of one state (no culling), or null when the block has no model at all. */
+/**
+ * Mesh of one state (no culling) and whether Deepslate's special renderers
+ * drew it, or null when the block has no model at all.
+ */
 function meshOf(
   state: BlockState,
   resources: GameResources,
   atlas: TextureAtlasProvider,
   cull: Partial<Record<(typeof FACES)[number], boolean>> = {},
   data: BlockRenderData | null = null,
-): Mesh | null {
+): { mesh: Mesh; special: boolean } | null {
   const name = Identifier.parse(state.name)
   const dsState = new DsBlockState(name, { ...state.properties })
   const mesh = new Mesh()
   let found = false
+  let usedSpecial = false
   try {
     const definition = resources.getBlockDefinition(name)
     let modelled = false
@@ -277,12 +282,13 @@ function meshOf(
     if (special && !special.isEmpty()) {
       mesh.merge(special)
       found = true
+      usedSpecial = true
     }
   } catch {
     // A referenced model is missing (e.g. a block newer than the game files).
     return null
   }
-  return found ? mesh : null
+  return found ? { mesh, special: usedSpecial } : null
 }
 
 /** Render data in the NBT shape Deepslate's special renderers read. */
@@ -405,6 +411,7 @@ function emptyState(): BakedState {
     opaqueFaces: 0,
     fullFaces: 0,
     missing: false,
+    specialModel: false,
     empty: true,
     fluid: FLUID_NONE,
     fluidGeometry: null,

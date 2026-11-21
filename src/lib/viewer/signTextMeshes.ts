@@ -11,9 +11,8 @@ import {
   Vector3,
   type Plane,
 } from 'three'
-import { blockIndex, type Structure } from '../types/structure'
+import { blockIndex, type Structure, type Vec3 } from '../types/structure'
 import {
-  BOARD,
   signPlacement,
   signTextColor,
   signTextOf,
@@ -24,7 +23,7 @@ import {
 /**
  * Draws the text of signs: each side with text becomes a tile of a canvas
  * page (128 tiles of 256 × 128 px per 2048 px page) and a quad just in front
- * of the board, placed with the same transform Deepslate uses for the board.
+ * of the board, placed with the same transform as the board that was drawn.
  * One mesh and one texture per page, so hundreds of signs cost a few draw
  * calls. The materials share the layer clipping planes.
  */
@@ -47,14 +46,20 @@ export interface SignTextResult {
 
 interface Face {
   side: SignSide
-  matrix: Matrix4
-  placement: SignPlacement
-  back: boolean
+  corners: [number, number, number][]
+  /** Width / height of the board, to draw the text without stretching it. */
+  aspect: number
 }
 
+/**
+ * `specialModels[i]`: palette state `i` was drawn by Deepslate's special
+ * renderers (see `BakedState.specialModel`), which places sign boards
+ * differently from the game's models.
+ */
 export function buildSignTextMeshes(
   structure: Pick<Structure, 'size' | 'palette' | 'blocks' | 'blockEntities'>,
   clippingPlanes: Plane[],
+  specialModels: readonly boolean[] = [],
 ): SignTextResult {
   const faces: Face[] = []
   for (const entity of structure.blockEntities) {
@@ -63,12 +68,18 @@ export function buildSignTextMeshes(
     const { x, y, z } = entity.pos
     const { size } = structure
     if (x < 0 || y < 0 || z < 0 || x >= size.x || y >= size.y || z >= size.z) continue
-    const state = structure.palette[structure.blocks[blockIndex(size, x, y, z)]]
-    const placement = state ? signPlacement(state) : null
+    const stateIndex = structure.blocks[blockIndex(size, x, y, z)]
+    const state = structure.palette[stateIndex]
+    const placement = state ? signPlacement(state, specialModels[stateIndex] ?? false) : null
     if (!placement) continue
-    const matrix = boardMatrix(x, y, z, placement.angle)
-    if (text.front) faces.push({ side: text.front, matrix, placement, back: false })
-    if (text.back) faces.push({ side: text.back, matrix, placement, back: true })
+    const { board } = placement
+    const aspect = (board.x1 - board.x0) / (board.y1 - board.y0)
+    for (const [side, back] of [
+      [text.front, false],
+      [text.back, true],
+    ] as const) {
+      if (side) faces.push({ side, corners: signTextCorners(entity.pos, placement, back), aspect })
+    }
   }
 
   const drawn = Math.min(faces.length, MAX_SIGN_SIDES)
@@ -81,15 +92,40 @@ export function buildSignTextMeshes(
   return { meshes, drawn, skipped: faces.length - drawn }
 }
 
-/** Deepslate's board transform (1/16 units) followed by the block position. */
-function boardMatrix(x: number, y: number, z: number, angle: number): Matrix4 {
-  return new Matrix4()
-    .makeTranslation(x, y, z)
+/**
+ * Corners of the text quad of one side of a sign, in world space: just in
+ * front of that face of the board, ordered top-left, top-right,
+ * bottom-right, bottom-left as seen by someone reading that side.
+ */
+export function signTextCorners(
+  pos: Vec3,
+  { board, angle }: SignPlacement,
+  back: boolean,
+): [number, number, number][] {
+  const matrix = new Matrix4()
+    .makeTranslation(pos.x, pos.y, pos.z)
     .multiply(new Matrix4().makeScale(1 / 16, 1 / 16, 1 / 16))
     .multiply(new Matrix4().makeTranslation(8, 8, 8))
     .multiply(new Matrix4().makeRotationY(angle))
-    .multiply(new Matrix4().makeScale(2 / 3, 2 / 3, 2 / 3))
+    .multiply(new Matrix4().makeScale(board.scale, board.scale, board.scale))
     .multiply(new Matrix4().makeTranslation(-8, -8, -8))
+  const faceZ = back ? board.back : board.front
+  const otherZ = back ? board.front : board.back
+  // The face looks away from the other one; seen from there, +x is on the
+  // left of a face looking towards −z and on the right of one towards +z.
+  const outward = Math.sign(faceZ - otherZ)
+  const z = faceZ + outward * LIFT
+  const [left, right] = outward < 0 ? [board.x1, board.x0] : [board.x0, board.x1]
+  const corner = new Vector3()
+  return [
+    [left, board.y1],
+    [right, board.y1],
+    [right, board.y0],
+    [left, board.y0],
+  ].map(([qx, qy]) => {
+    corner.set(qx, qy, z).applyMatrix4(matrix)
+    return [corner.x, corner.y, corner.z]
+  })
 }
 
 function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
@@ -103,28 +139,12 @@ function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
   const uvs = new Float32Array(faces.length * 8)
   const indices = new Uint32Array(faces.length * 6)
   const columns = PAGE / TILE_W
-  const corner = new Vector3()
 
   faces.forEach((face, i) => {
     const tx = (i % columns) * TILE_W
     const ty = Math.floor(i / columns) * TILE_H
-    drawTile(ctx, face.side, tx, ty)
-
-    const board = BOARD[face.placement.kind]
-    // Front text faces −z (seen from the front), back text faces +z; the
-    // corners go left → right as seen by the viewer of each side.
-    const z = face.back ? board.back + LIFT : board.front - LIFT
-    const [left, right] = face.back ? [board.x0, board.x1] : [board.x1, board.x0]
-    const quad = [
-      [left, board.y1],
-      [right, board.y1],
-      [right, board.y0],
-      [left, board.y0],
-    ]
-    quad.forEach(([qx, qy], k) => {
-      corner.set(qx, qy, z).applyMatrix4(face.matrix)
-      positions.set([corner.x, corner.y, corner.z], (i * 4 + k) * 3)
-    })
+    drawTile(ctx, face.side, tx, ty, TILE_W / TILE_H / face.aspect)
+    face.corners.forEach((corner, k) => positions.set(corner, (i * 4 + k) * 3))
     // v = 0 at the top of the canvas (the texture is not flipped).
     const u0 = tx / PAGE
     const u1 = (tx + TILE_W) / PAGE
@@ -161,8 +181,18 @@ function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
   return mesh
 }
 
-/** Four centred lines, shrunk horizontally when a line is too wide. */
-function drawTile(ctx: CanvasRenderingContext2D, side: SignSide, x: number, y: number): void {
+/**
+ * Four centred lines, shrunk horizontally when a line is too wide.
+ * `stretch`: horizontal scale that makes up for a board narrower than the
+ * 2 : 1 tile (hanging signs), so the letters keep their shape.
+ */
+function drawTile(
+  ctx: CanvasRenderingContext2D,
+  side: SignSide,
+  x: number,
+  y: number,
+  stretch: number,
+): void {
   const lineHeight = TILE_H / 4.4
   ctx.save()
   ctx.font = `600 ${Math.round(lineHeight * 0.8)}px system-ui, sans-serif`
@@ -172,11 +202,11 @@ function drawTile(ctx: CanvasRenderingContext2D, side: SignSide, x: number, y: n
   side.lines.forEach((line, i) => {
     if (!line) return
     const cy = y + TILE_H * 0.08 + lineHeight * (i + 0.5)
-    const width = ctx.measureText(line).width
+    const width = ctx.measureText(line).width * stretch
     const max = TILE_W * 0.92
     ctx.save()
     ctx.translate(x + TILE_W / 2, cy)
-    if (width > max) ctx.scale(max / width, 1)
+    ctx.scale(width > max ? (stretch * max) / width : stretch, 1)
     if (side.glowing) {
       // Glowing text: an outline in a darker shade, as in the game.
       ctx.lineWidth = 4

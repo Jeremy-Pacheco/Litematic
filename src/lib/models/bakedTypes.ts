@@ -41,6 +41,12 @@ export interface BakedState {
   fullFaces: number
   /** No model was found: drawn with the missing texture. */
   missing: boolean
+  /**
+   * Drawn by Deepslate's special renderers because the game files have no
+   * JSON model for it (signs before 26.x, chests…). Their geometry differs
+   * from the game's, so what is placed on them (sign text) must know it.
+   */
+  specialModel: boolean
   /** Nothing to draw (air). */
   empty: boolean
   /**
