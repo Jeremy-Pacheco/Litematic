@@ -20,6 +20,8 @@ import {
   INNER_GROUP,
   MISSING_TEXTURE,
   type BakedState,
+  type Face,
+  type LayeredGeometry,
   type QuadGeometry,
 } from './bakedTypes'
 import { RENDER_LAYERS, RenderLayer } from './renderLayer'
@@ -71,7 +73,10 @@ export function collectTextureIds(
       return [0, 0, 1, 1]
     },
   }
-  palette.forEach((state, i) => meshOf(state, resources, recorder, {}, data[i] ?? null))
+  palette.forEach((state, i) => {
+    meshOf(state, resources, recorder, {}, data[i] ?? null)
+    fluidMeshOf(state, fluidOf(state), recorder, {})
+  })
   return ids
 }
 
@@ -97,23 +102,46 @@ export function bakeState(
   data: BlockRenderData | null = null,
 ): BakedState {
   if (isAirId(state.name)) return emptyState()
-  const result = meshOf(state, resources, atlas, {}, data)
-  const quads = result ? result.quads : missingCube(atlas)
+  const model = meshOf(state, resources, atlas, {}, data)
+  // The fluid a block holds is baked apart from its model, so the mesher can
+  // hide it next to the same fluid (one volume of water, not a surface per
+  // block) while the model keeps its own faces.
   const fluid = fluidOf(state)
-  // Fluid blocks also get their shape with the same fluid above: full height
-  // and no top face, so stacked water reads as one volume.
-  const full =
-    result && FLUID_BLOCKS.has(state.name) ? meshOf(state, resources, atlas, { up: true }) : null
-  const sorted = sortQuads(quads, atlas)
+  const fluidMesh = fluidMeshOf(state, fluid, atlas, {})
+  const missing = model === null && !(fluidMesh && FLUID_BLOCKS.has(state.name))
+  const quads = missing ? missingCube(atlas) : (model?.quads ?? [])
+  const fluidGeometry = fluidMesh ? sortQuads(fluidMesh.quads, atlas).geometry : null
+  // With the same fluid above: full height and no top face.
+  const fullMesh = fluidGeometry ? fluidMeshOf(state, fluid, atlas, { up: true }) : null
   return {
-    ...sorted,
-    missing: result === null,
-    empty: quads.length === 0,
+    ...sortQuads(quads, atlas),
+    missing,
+    empty: quads.length === 0 && fluidGeometry === null,
     fluid,
-    fluidFull: full
-      ? withTopAtFullHeight(sortQuads(full.quads, atlas).geometry, sorted.geometry)
-      : null,
+    fluidGeometry,
+    fluidFull:
+      fluidGeometry && fullMesh
+        ? withTopAtFullHeight(sortQuads(fullMesh.quads, atlas).geometry, fluidGeometry)
+        : null,
   }
+}
+
+/**
+ * Mesh of the fluid filling a position: the liquid of water and lava blocks
+ * (with their level), or a water source for waterlogged blocks.
+ */
+function fluidMeshOf(
+  state: BlockState,
+  fluid: number,
+  atlas: TextureAtlasProvider,
+  cull: Partial<Record<Face, boolean>>,
+): Mesh | null {
+  if (fluid === FLUID_NONE) return null
+  const block = FLUID_BLOCKS.has(state.name)
+    ? new DsBlockState(Identifier.parse(state.name), { ...state.properties })
+    : DsBlockState.WATER
+  const mesh = SpecialRenderers.getBlockMesh(block, undefined, atlas, cull)
+  return mesh.isEmpty() ? null : mesh
 }
 
 /**
@@ -122,10 +150,7 @@ export function bakeState(
  * the surface of the normal shape is added back at full height, on the top
  * side group where the usual culling applies.
  */
-function withTopAtFullHeight(
-  full: (QuadGeometry | null)[][],
-  normal: (QuadGeometry | null)[][],
-): (QuadGeometry | null)[][] {
+function withTopAtFullHeight(full: LayeredGeometry, normal: LayeredGeometry): LayeredGeometry {
   return full.map((groups, layer) => {
     const surface = normal[layer][INNER_GROUP]
     const top = surface ? liftTop(surface) : null
@@ -171,6 +196,14 @@ const ALWAYS_WATER = new Set([
   'minecraft:seagrass',
   'minecraft:tall_seagrass',
 ])
+
+/** The same block state without water (`waterlogged=false`). */
+function dry(state: DsBlockState): DsBlockState {
+  const properties = state.getProperties()
+  return properties.waterlogged === 'true'
+    ? new DsBlockState(state.getName(), { ...properties, waterlogged: 'false' })
+    : state
+}
 
 /** Fluid filling the position of a state (see `BakedState.fluid`). */
 export function fluidOf(state: BlockState): number {
@@ -234,13 +267,13 @@ function meshOf(
     }
     // Deepslate draws some blocks (signs, beds…) like the old entity models,
     // from textures that newer versions moved (26.x has JSON models for them).
-    // When the game's own model exists it is used alone; only the water of a
-    // waterlogged block, which no model includes, is still added.
-    const special = modelled
-      ? dsState.isWaterlogged()
-        ? SpecialRenderers.getBlockMesh(DsBlockState.WATER, undefined, atlas, cull)
-        : null
-      : SpecialRenderers.getBlockMesh(dsState, toDeepslateNbt(data), atlas, cull)
+    // When the game's own model exists it is used alone. Fluids are not part
+    // of the model (see `fluidMeshOf`): Deepslate would add the water of a
+    // waterlogged block, so it gets the block without it.
+    const special =
+      modelled || FLUID_BLOCKS.has(state.name) || ALWAYS_WATER.has(state.name)
+        ? null
+        : SpecialRenderers.getBlockMesh(dry(dsState), toDeepslateNbt(data), atlas, cull)
     if (special && !special.isEmpty()) {
       mesh.merge(special)
       found = true
@@ -374,6 +407,7 @@ function emptyState(): BakedState {
     missing: false,
     empty: true,
     fluid: FLUID_NONE,
+    fluidGeometry: null,
     fluidFull: null,
   }
 }
