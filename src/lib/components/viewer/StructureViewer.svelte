@@ -63,7 +63,7 @@
     result = null
     progress = { phase: 'models', fraction: 0 }
     try {
-      const shown = await manager.show(target, (p) => (progress = p))
+      const shown = await manager.show(target, (p) => (progress = p), viewer.biome)
       if (target !== structure) return
       result = shown
       if (shown.textureScale > 1) {
@@ -113,6 +113,7 @@
   // pack change. A new pack rebuilds textures and geometry, not the structure.
   $effect(() => {
     void resourcePack.revision
+    void viewer.biome
     if (scene && assetsReady) void load(structure)
   })
 

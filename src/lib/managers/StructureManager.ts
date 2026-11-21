@@ -9,6 +9,7 @@ import {
   type Material,
 } from 'three'
 import type { BakedModels } from '../models/bakeModels'
+import { DEFAULT_BIOME, type BiomeId } from '../models/biomes'
 import { buildRenderVariants } from '../models/blockEntityRender'
 import type { Structure } from '../types/structure'
 import type { LayerRange } from '../viewer/layers'
@@ -81,7 +82,11 @@ export class StructureManager {
     this.#scene = scene
   }
 
-  async show(structure: Structure, onProgress?: (p: ShowProgress) => void): Promise<ShowResult> {
+  async show(
+    structure: Structure,
+    onProgress?: (p: ShowProgress) => void,
+    biome: BiomeId = DEFAULT_BIOME,
+  ): Promise<ShowResult> {
     this.clear()
     const size = new Vector3(structure.size.x, structure.size.y, structure.size.z)
     this.#scene.setBounds(size)
@@ -93,7 +98,7 @@ export class StructureManager {
     // Blocks whose data changes their look (banner patterns) get their own
     // palette entries for drawing; the structure itself is not changed.
     const variants = buildRenderVariants(structure)
-    const bake = ModelManager.bake(variants.palette, variants.data)
+    const bake = ModelManager.bake(variants.palette, variants.data, biome)
     this.#cancel = bake.cancel
     const models = await bake.promise
 
