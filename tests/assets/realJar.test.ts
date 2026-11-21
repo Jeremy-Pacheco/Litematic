@@ -3,7 +3,7 @@
  * The jar is Mojang's property and is never committed: copy it to the
  * git-ignored `tests/fixtures/local/` to run this test.
  */
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { LANG_FILE, readClientJar } from '../../src/lib/assets/minecraftJar'
 import { parseLang } from '../../src/lib/assets/loadClientJar'
 import { blockToItems } from '../../src/lib/materials/blockToItems'
@@ -22,14 +22,20 @@ const fs = getBuiltinModule('node:fs') as NodeFs
 const JAR = 'tests/fixtures/local/client-26.3.jar'
 
 describe.skipIf(!fs.existsSync(JAR))('real client.jar 26.3', () => {
-  const start = performance.now()
-  const { version, files } = readClientJar(new Uint8Array(fs.readFileSync(JAR)))
-  const ms = Math.round(performance.now() - start)
-  let bytes = 0
-  for (const f of files.values()) bytes += f.byteLength
-  console.log(
-    `\nclient.jar 26.3: ${files.size} files, ${(bytes / 1e6).toFixed(2)} MB extracted in ${ms} ms`,
-  )
+  // Read in beforeAll: a skipped suite still runs its body to collect its
+  // tests, and the jar only exists on the author's machine (not in CI).
+  let version!: ReturnType<typeof readClientJar>['version']
+  let files!: ReturnType<typeof readClientJar>['files']
+  beforeAll(() => {
+    const start = performance.now()
+    ;({ version, files } = readClientJar(new Uint8Array(fs.readFileSync(JAR))))
+    const ms = Math.round(performance.now() - start)
+    let bytes = 0
+    for (const f of files.values()) bytes += f.byteLength
+    console.log(
+      `\nclient.jar 26.3: ${files.size} files, ${(bytes / 1e6).toFixed(2)} MB extracted in ${ms} ms`,
+    )
+  })
 
   it('reads the version', () => {
     expect(version).toEqual({ id: '26.3', dataVersion: 5023, resourcePackFormat: 97, stable: true })
