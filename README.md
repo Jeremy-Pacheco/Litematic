@@ -7,7 +7,8 @@ Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Lite
 > `.schematic` antiguos se traducen a bloques modernos). Los **muestra en 3D con las texturas de
 > tu propio Minecraft** (cargando su `client.jar`) y calcula la **lista de materiales** con lo
 > que te falta, y permite **construir por capas** con su progreso. Al hacer clic en un bloque
-> muestra su nombre, posición, propiedades y datos. Pendiente: resource packs. Consulta
+> muestra su nombre, posición, propiedades y datos. También admite **resource packs** `.zip`.
+> Consulta
 > [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada funcionalidad.
 
 ## Objetivo

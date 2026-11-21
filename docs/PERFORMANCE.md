@@ -184,6 +184,14 @@ Seleccionar un bloque recorre la cuadrícula de bloques en el hilo principal: co
 del número de bloques ni de triángulos y no hace falta un worker. El árbol NBT está limitado a 8
 niveles y 64 hijos por nodo, así un cofre lleno de cajas de shulker no bloquea la interfaz.
 
+## Resource packs (`feature/texture-packs`)
+
+- El pack se extrae en el worker de recursos y se guarda en IndexedDB; el hilo principal solo
+  recibe sus metadatos.
+- Al preparar los modelos solo se decodifican las texturas que usa la paleta, también las del pack.
+- Pack de pruebas con 13 texturas de 1024 px en el terreno de 2,9 M bloques: modelos y atlas en
+  ~1,7 s (decodificar 13 Mpx), texturas reducidas a 1/2 para caber en un atlas de 4096 px.
+
 ## Compilación
 
 Tras `feature/structure-viewer`:

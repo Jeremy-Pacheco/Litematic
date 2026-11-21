@@ -40,82 +40,86 @@ docs/                    Documentación
 
 ## Módulos implementados
 
-| Módulo                                    | Responsabilidad                                                                           |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `styles/tokens.css`                       | Paleta, tipografía, espaciado, radios y duración de animaciones                           |
-| `stores/theme.svelte.ts`                  | Tema elegido (automático, claro, oscuro) y tema efectivo                                  |
-| `i18n/translate.ts`                       | Tipos de mensajes, `translate()` y detección del idioma del navegador                     |
-| `i18n/i18n.svelte.ts`                     | Idioma activo y función `t()` reactiva                                                    |
-| `i18n/locales/{es,en}.ts`                 | Textos de la interfaz                                                                     |
-| `stores/toasts.svelte.ts`                 | Cola de notificaciones con cierre automático                                              |
-| `stores/importState.svelte.ts`            | Archivo elegido, estado de su lectura y `Structure` resultante; cancela la anterior       |
-| `assets/zipReader.ts`                     | Extracción segura de ZIP: rutas, límites, CRC-32                                          |
-| `assets/minecraftJar.ts`                  | Valida el client.jar, lee `version.json` y elige qué extraer                              |
-| `assets/assetCache.ts`                    | Caché IndexedDB (meta, idioma, archivos)                                                  |
-| `models/gameResources.ts`                 | Block states y modelos del juego para Deepslate (caché, herencia resuelta)                |
-| `models/atlasPacking.ts`                  | Empaquetado del atlas en estantes                                                         |
-| `models/renderLayer.ts`                   | Capa de dibujo según el canal alfa                                                        |
-| `models/atlas.ts`                         | Atlas en worker (OffscreenCanvas), textura «falta textura»                                |
-| `models/bakeStates.ts`                    | Estado → quads por capa y lado, cobertura de lados, bloques especiales                    |
-| `models/bakeModels.ts`                    | Flujo completo: texturas usadas → atlas → estados                                         |
-| `managers/ModelManager.ts`                | API para el visor: prepara una paleta en un worker                                        |
-| `managers/AssetManager.ts`                | API de recursos del juego para el resto de la app; worker por jar                         |
-| `models/bakedTypes.ts`                    | Tipos y constantes del bake sin Deepslate (los usa el mesher)                             |
-| `viewer/mesher.ts`                        | Secciones de 16³ → mallas por capa, caras ocultas, sombreado por cara                     |
-| `viewer/materials.ts`                     | Textura del atlas y un material por capa                                                  |
-| `workers/mesher.worker.ts`                | Genera las secciones y, después, las tapas de las capas, fuera del hilo principal         |
-| `managers/SceneManager.ts`                | Renderizador, escena, dibujado bajo demanda, ayudas, liberación, pérdida de contexto      |
-| `managers/CameraManager.ts`               | Controles orbitales, ajustar y vistas predefinidas                                        |
-| `managers/StructureManager.ts`            | Estructura → modelos → atlas → secciones; corte por capas sin reconstruir                 |
-| `stores/viewer.svelte.ts`                 | Opciones del visor guardadas (cuadrícula, caja, fondo, panel)                             |
-| `import/openStructureFiles.ts`            | Abre archivos y comunica el resultado (importación y visor)                               |
-| `viewer/layers.ts`                        | Lógica de capas sin interfaz: rango visible, estado de cada capa, progreso                |
-| `stores/layers.svelte.ts`                 | Selección de capas de la estructura; recuerda modo y sentido                              |
-| `components/layers/LayerPanel.svelte`     | Panel de capas del visor y atajos de teclado                                              |
-| `viewer/picking.ts`                       | Bloque bajo el cursor recorriendo la cuadrícula (respeta las capas visibles)              |
-| `viewer/nbtTree.ts`                       | Vista de texto limitada de un NBT (block entities) para el inspector                      |
-| `components/viewer/BlockInspector.svelte` | Inspector del bloque seleccionado                                                         |
-| `stores/assets.svelte.ts`                 | Estado de los recursos para la interfaz y tabla de idioma                                 |
-| `components/dialogs/AssetsDialog`         | Diálogo «Recursos de Minecraft» (`<dialog>` nativo)                                       |
-| `components/layout/AssetsIndicator`       | Indicador de recursos en la barra superior                                                |
-| `types/nbt.ts`                            | Modelo NBT en memoria (`Map`, `TypedArray`, listas y long arrays como objetos simples)    |
-| `types/structure.ts`                      | Modelo común `Structure` (paleta global + array denso Y-Z-X)                              |
-| `parsers/blockState.ts`                   | Clave canónica de un estado de bloque, aire y sus variantes                               |
-| `parsers/structureBuilder.ts`             | Paleta global sin duplicados, límite de tamaño y reserva del array de bloques             |
-| `parsers/litematic/bitArray.ts`           | Decodificador del empaquetado de bits de Litematica                                       |
-| `parsers/litematic/LitematicParser.ts`    | `.litematic` → `Structure` (regiones, tamaños negativos, entidades, metadatos)            |
-| `parsers/blockStateString.ts`             | Interpreta `id[clave=valor,…]` como `BlockState`                                          |
-| `parsers/sponge/varint.ts`                | Lector secuencial de varints sin copia                                                    |
-| `parsers/sponge/SpongeParser.ts`          | `.schem` v1/v2/v3 → `Structure`                                                           |
-| `utils/structureTitle.ts`                 | Título visible: nombre de la estructura o, si es genérico, nombre del archivo             |
-| `parsers/mcedit/McEditParser.ts`          | `.schematic` (IDs numéricos anteriores a 1.13) → `Structure`                              |
-| `parsers/mcedit/legacyBlocks.ts`          | Tabla `id:meta` → blockstate moderno, con caché y carga bajo demanda                      |
-| `data/legacyBlocks.json`                  | Tabla generada desde minecraft-data (MIT); aviso en `data/LICENSE-minecraft-data.txt`     |
-| `parsers/nbt/decompress.ts`               | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
-| `parsers/nbt/NbtReader.ts`                | Lector NBT binario con validación de longitudes y profundidad                             |
-| `parsers/nbt/modifiedUtf8.ts`             | Decodificación de cadenas en UTF-8 modificado de Java                                     |
-| `parsers/nbt/access.ts`                   | Lectura tipada de compuestos (`getInteger`, `getCompound`…)                               |
-| `parsers/detectFormat.ts`                 | Identifica Litematica, Sponge v1/v2/v3 o MCEdit por el contenido                          |
-| `parsers/readStructureFile.ts`            | Flujo completo: descomprimir → NBT → detectar formato → parser del formato                |
-| `parsers/errors.ts`                       | `StructureReadError` con códigos de error traducibles                                     |
-| `workers/structure.worker.ts`             | Ejecuta `readStructureFile` fuera del hilo principal                                      |
-| `workers/structureWorkerClient`           | Crea un worker por archivo; promesa, progreso y cancelación                               |
-| `utils/structureFile.ts`                  | Comprobación previa del archivo (extensión y tamaño cero)                                 |
-| `utils/storage.ts`                        | Acceso a `localStorage` que no rompe la app si no está disponible                         |
-| `utils/format.ts`                         | `formatBytes` y `formatCount`: tamaños y cantidades según el idioma                       |
-| `constants/formats.ts`                    | Formatos de estructura y sus extensiones                                                  |
-| `constants/storage.ts`                    | Claves de `localStorage`                                                                  |
-| `components/layout/AppShell`              | Barra superior + contenido + notificaciones                                               |
-| `components/layout/TopBar`                | Marca, archivo seleccionado (nombre, tamaño, dimensiones), idioma y tema                  |
-| `components/import/ImportScreen`          | Orquesta la importación y traduce el resultado a notificaciones                           |
-| `components/import/*`                     | `DropZone`, `WindowDropTarget`, `FilePickerButton`, `ReadingProgress`, `StructureSummary` |
-| `materials/blockToItems.ts`               | Reglas bloque colocado → ítems necesarios                                                 |
-| `materials/materialList.ts`               | Agrupa los recuentos de la estructura por ítem; nombre provisional legible                |
-| `materials/stackSizes.ts`                 | Tamaño de stack por ítem, desglose en stacks y cajas de shulker                           |
-| `stores/materials.svelte.ts`              | Cantidades que el usuario tiene, guardadas por archivo en `localStorage`                  |
-| `components/materials/*`                  | `MaterialList` (búsqueda, orden, filtros, progreso, apartado especial), `MaterialRow`     |
-| `components/feedback/Toaster`             | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`                |
-| `components/controls/*`                   | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher`   |
+| Módulo                                          | Responsabilidad                                                                           |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `styles/tokens.css`                             | Paleta, tipografía, espaciado, radios y duración de animaciones                           |
+| `stores/theme.svelte.ts`                        | Tema elegido (automático, claro, oscuro) y tema efectivo                                  |
+| `i18n/translate.ts`                             | Tipos de mensajes, `translate()` y detección del idioma del navegador                     |
+| `i18n/i18n.svelte.ts`                           | Idioma activo y función `t()` reactiva                                                    |
+| `i18n/locales/{es,en}.ts`                       | Textos de la interfaz                                                                     |
+| `stores/toasts.svelte.ts`                       | Cola de notificaciones con cierre automático                                              |
+| `stores/importState.svelte.ts`                  | Archivo elegido, estado de su lectura y `Structure` resultante; cancela la anterior       |
+| `assets/zipReader.ts`                           | Extracción segura de ZIP: rutas, límites, CRC-32                                          |
+| `assets/minecraftJar.ts`                        | Valida el client.jar, lee `version.json` y elige qué extraer                              |
+| `assets/assetCache.ts`                          | Caché IndexedDB (meta, idioma, archivos)                                                  |
+| `models/gameResources.ts`                       | Block states y modelos del juego para Deepslate (caché, herencia resuelta)                |
+| `models/atlasPacking.ts`                        | Empaquetado del atlas en estantes                                                         |
+| `models/renderLayer.ts`                         | Capa de dibujo según el canal alfa                                                        |
+| `models/atlas.ts`                               | Atlas en worker (OffscreenCanvas), textura «falta textura»                                |
+| `models/bakeStates.ts`                          | Estado → quads por capa y lado, cobertura de lados, bloques especiales                    |
+| `models/bakeModels.ts`                          | Flujo completo: texturas usadas → atlas → estados                                         |
+| `managers/ModelManager.ts`                      | API para el visor: prepara una paleta en un worker                                        |
+| `managers/AssetManager.ts`                      | API de recursos del juego para el resto de la app; worker por jar                         |
+| `models/bakedTypes.ts`                          | Tipos y constantes del bake sin Deepslate (los usa el mesher)                             |
+| `viewer/mesher.ts`                              | Secciones de 16³ → mallas por capa, caras ocultas, sombreado por cara                     |
+| `viewer/materials.ts`                           | Textura del atlas y un material por capa                                                  |
+| `workers/mesher.worker.ts`                      | Genera las secciones y, después, las tapas de las capas, fuera del hilo principal         |
+| `managers/SceneManager.ts`                      | Renderizador, escena, dibujado bajo demanda, ayudas, liberación, pérdida de contexto      |
+| `managers/CameraManager.ts`                     | Controles orbitales, ajustar y vistas predefinidas                                        |
+| `managers/StructureManager.ts`                  | Estructura → modelos → atlas → secciones; corte por capas sin reconstruir                 |
+| `stores/viewer.svelte.ts`                       | Opciones del visor guardadas (cuadrícula, caja, fondo, panel)                             |
+| `import/openStructureFiles.ts`                  | Abre archivos y comunica el resultado (importación y visor)                               |
+| `viewer/layers.ts`                              | Lógica de capas sin interfaz: rango visible, estado de cada capa, progreso                |
+| `stores/layers.svelte.ts`                       | Selección de capas de la estructura; recuerda modo y sentido                              |
+| `components/layers/LayerPanel.svelte`           | Panel de capas del visor y atajos de teclado                                              |
+| `viewer/picking.ts`                             | Bloque bajo el cursor recorriendo la cuadrícula (respeta las capas visibles)              |
+| `viewer/nbtTree.ts`                             | Vista de texto limitada de un NBT (block entities) para el inspector                      |
+| `components/viewer/BlockInspector.svelte`       | Inspector del bloque seleccionado                                                         |
+| `assets/resourcePack.ts`                        | Lectura segura de un resource pack: pack.mcmeta, overlays, archivos útiles                |
+| `assets/loadResourcePack.ts`                    | Importación de un pack: leer → extraer → guardar en IndexedDB                             |
+| `stores/resourcePack.svelte.ts`                 | Pack en uso; el visor se rehace cuando cambia                                             |
+| `components/dialogs/ResourcePackSection.svelte` | Sección del pack en el diálogo de recursos                                                |
+| `stores/assets.svelte.ts`                       | Estado de los recursos para la interfaz y tabla de idioma                                 |
+| `components/dialogs/AssetsDialog`               | Diálogo «Recursos de Minecraft» (`<dialog>` nativo)                                       |
+| `components/layout/AssetsIndicator`             | Indicador de recursos en la barra superior                                                |
+| `types/nbt.ts`                                  | Modelo NBT en memoria (`Map`, `TypedArray`, listas y long arrays como objetos simples)    |
+| `types/structure.ts`                            | Modelo común `Structure` (paleta global + array denso Y-Z-X)                              |
+| `parsers/blockState.ts`                         | Clave canónica de un estado de bloque, aire y sus variantes                               |
+| `parsers/structureBuilder.ts`                   | Paleta global sin duplicados, límite de tamaño y reserva del array de bloques             |
+| `parsers/litematic/bitArray.ts`                 | Decodificador del empaquetado de bits de Litematica                                       |
+| `parsers/litematic/LitematicParser.ts`          | `.litematic` → `Structure` (regiones, tamaños negativos, entidades, metadatos)            |
+| `parsers/blockStateString.ts`                   | Interpreta `id[clave=valor,…]` como `BlockState`                                          |
+| `parsers/sponge/varint.ts`                      | Lector secuencial de varints sin copia                                                    |
+| `parsers/sponge/SpongeParser.ts`                | `.schem` v1/v2/v3 → `Structure`                                                           |
+| `utils/structureTitle.ts`                       | Título visible: nombre de la estructura o, si es genérico, nombre del archivo             |
+| `parsers/mcedit/McEditParser.ts`                | `.schematic` (IDs numéricos anteriores a 1.13) → `Structure`                              |
+| `parsers/mcedit/legacyBlocks.ts`                | Tabla `id:meta` → blockstate moderno, con caché y carga bajo demanda                      |
+| `data/legacyBlocks.json`                        | Tabla generada desde minecraft-data (MIT); aviso en `data/LICENSE-minecraft-data.txt`     |
+| `parsers/nbt/decompress.ts`                     | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
+| `parsers/nbt/NbtReader.ts`                      | Lector NBT binario con validación de longitudes y profundidad                             |
+| `parsers/nbt/modifiedUtf8.ts`                   | Decodificación de cadenas en UTF-8 modificado de Java                                     |
+| `parsers/nbt/access.ts`                         | Lectura tipada de compuestos (`getInteger`, `getCompound`…)                               |
+| `parsers/detectFormat.ts`                       | Identifica Litematica, Sponge v1/v2/v3 o MCEdit por el contenido                          |
+| `parsers/readStructureFile.ts`                  | Flujo completo: descomprimir → NBT → detectar formato → parser del formato                |
+| `parsers/errors.ts`                             | `StructureReadError` con códigos de error traducibles                                     |
+| `workers/structure.worker.ts`                   | Ejecuta `readStructureFile` fuera del hilo principal                                      |
+| `workers/structureWorkerClient`                 | Crea un worker por archivo; promesa, progreso y cancelación                               |
+| `utils/structureFile.ts`                        | Comprobación previa del archivo (extensión y tamaño cero)                                 |
+| `utils/storage.ts`                              | Acceso a `localStorage` que no rompe la app si no está disponible                         |
+| `utils/format.ts`                               | `formatBytes` y `formatCount`: tamaños y cantidades según el idioma                       |
+| `constants/formats.ts`                          | Formatos de estructura y sus extensiones                                                  |
+| `constants/storage.ts`                          | Claves de `localStorage`                                                                  |
+| `components/layout/AppShell`                    | Barra superior + contenido + notificaciones                                               |
+| `components/layout/TopBar`                      | Marca, archivo seleccionado (nombre, tamaño, dimensiones), idioma y tema                  |
+| `components/import/ImportScreen`                | Orquesta la importación y traduce el resultado a notificaciones                           |
+| `components/import/*`                           | `DropZone`, `WindowDropTarget`, `FilePickerButton`, `ReadingProgress`, `StructureSummary` |
+| `materials/blockToItems.ts`                     | Reglas bloque colocado → ítems necesarios                                                 |
+| `materials/materialList.ts`                     | Agrupa los recuentos de la estructura por ítem; nombre provisional legible                |
+| `materials/stackSizes.ts`                       | Tamaño de stack por ítem, desglose en stacks y cajas de shulker                           |
+| `stores/materials.svelte.ts`                    | Cantidades que el usuario tiene, guardadas por archivo en `localStorage`                  |
+| `components/materials/*`                        | `MaterialList` (búsqueda, orden, filtros, progreso, apartado especial), `MaterialRow`     |
+| `components/feedback/Toaster`                   | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`                |
+| `components/controls/*`                         | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher`   |
 
 ## Interfaz
 
