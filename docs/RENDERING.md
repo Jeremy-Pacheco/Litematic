@@ -271,7 +271,8 @@ también al pulsar en el aire de su celda.
 
 - **Fluidos:** todo fluido es una fuente quieta (altura de su `level`); no se calcula la inclinación
   del agua que corre ni la altura según los bloques vecinos.
-- **Estandartes:** solo el color base; los patrones (que están en el block entity) llegarán más
-  adelante. Los carteles no muestran su texto.
+- **Texto de los carteles:** con la letra del sistema, no la del juego, y como mucho 512 caras con
+  texto por estructura (4 páginas); las que sobran no se dibujan y se avisa.
+- **Estandartes:** como mucho 16 capas de dibujos por estandarte.
 - **Texturas animadas:** se usa el primer fotograma.
 - **Tintes:** colores de bioma por defecto (Deepslate `BlockColors`), no los del bioma real.
