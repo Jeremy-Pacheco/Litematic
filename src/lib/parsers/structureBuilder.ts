@@ -83,10 +83,20 @@ export function allocateBlocks(size: Vec3, paletteSize: number): Uint16Array | U
  * a single pass over the blocks (the material list is built from these counts).
  */
 export function finishStructure(parts: StructureParts): Structure {
-  const { blocks, palette } = parts
+  const { blocks, palette, size } = parts
   const blockCounts = new Uint32Array(palette.length)
-  for (let i = 0; i < blocks.length; i++) blockCounts[blocks[i]]++
-  return { ...parts, blockCounts, nonAirBlocks: blocks.length - blockCounts[0] }
+  const layerBlocks = new Uint32Array(size.y)
+  const layerSize = size.x * size.z
+  for (let y = 0, i = 0; y < size.y; y++) {
+    let solid = 0
+    for (const end = i + layerSize; i < end; i++) {
+      const state = blocks[i]
+      blockCounts[state]++
+      if (state !== 0) solid++
+    }
+    layerBlocks[y] = solid
+  }
+  return { ...parts, blockCounts, layerBlocks, nonAirBlocks: blocks.length - blockCounts[0] }
 }
 
 export function emptyWarnings(): StructureWarnings {
