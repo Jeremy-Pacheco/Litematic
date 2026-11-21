@@ -164,6 +164,8 @@ describe('pack helpers', () => {
   it('extracts only pack.mcmeta, the icon and block assets', () => {
     expect(isWantedPackEntry('pack.mcmeta')).toBe(true)
     expect(isWantedPackEntry('Pack/assets/minecraft/textures/block/a.png')).toBe(true)
+    expect(isWantedPackEntry('assets/minecraft/font/default.json')).toBe(true)
+    expect(isWantedPackEntry('assets/minecraft/textures/font/ascii.png')).toBe(true)
     expect(isWantedPackEntry('assets/minecraft/sounds/a.ogg')).toBe(false)
     expect(isWantedPackEntry('assets/minecraft/shaders/core/x.fsh')).toBe(false)
     expect(isWantedPackEntry('a/b/c/assets/minecraft/textures/block/a.png')).toBe(false)

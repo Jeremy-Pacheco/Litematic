@@ -35,9 +35,13 @@ De las ~34 000 entradas del jar (casi todas código), solo:
 | `assets/minecraft/models/{block,item}/**.json`                           | Modelos                                   |
 | `assets/minecraft/items/*.json`                                          | Modelos de ítem (1.21.4+)                 |
 | `assets/minecraft/textures/{block,item,entity,colormap}/**.{png,mcmeta}` | Texturas, animaciones, colores de bioma   |
+| `assets/minecraft/font/**.json`, `assets/minecraft/textures/font/*.png`  | Fuente del juego (texto de los carteles)  |
 | `assets/minecraft/lang/en_us.json`                                       | Nombres oficiales                         |
 
-Con el jar 26.3: **10 138 archivos, 4,5 MB**.
+Con el jar 26.3: **10 150 archivos, 4,5 MB** (la fuente son 12 archivos, 36 KB). Los recursos
+extraídos antes de leer la fuente no la tienen: el texto de los carteles usa entonces la letra del
+sistema y el visor avisa de que basta con volver a cargar el jar. Un resource pack también puede
+cambiar la fuente (`font/*.json` y sus texturas).
 
 **Idiomas:** el jar solo incluye `en_us.json`. El resto de idiomas los descarga el launcher aparte
 (`.minecraft/assets/objects`, con nombres en forma de hash), así que los nombres oficiales se

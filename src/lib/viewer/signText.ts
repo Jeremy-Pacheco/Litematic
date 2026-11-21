@@ -210,12 +210,39 @@ export const SIGN_COLORS: Readonly<Record<string, number>> = {
   black: 0x000000,
 }
 
+/**
+ * Text layout of each kind of sign, as the game draws it: font pixels per
+ * block (the text scale), height of a line and widest line, in font pixels.
+ */
+export const SIGN_TEXT: Readonly<
+  Record<SignKind, { pxPerBlock: number; lineHeight: number; maxWidth: number }>
+> = {
+  standing: { pxPerBlock: 96, lineHeight: 10, maxWidth: 90 },
+  wall: { pxPerBlock: 96, lineHeight: 10, maxWidth: 90 },
+  hanging: { pxPerBlock: 64 / 0.9, lineHeight: 9, maxWidth: 60 },
+  wall_hanging: { pxPerBlock: 64 / 0.9, lineHeight: 9, maxWidth: 60 },
+}
+
+function rgb(color: number, factor: number): string {
+  const r = Math.round(((color >> 16) & 0xff) * factor)
+  const g = Math.round(((color >> 8) & 0xff) * factor)
+  const b = Math.round((color & 0xff) * factor)
+  return `rgb(${r} ${g} ${b})`
+}
+
+/** The game's darkened text color (text without glow, and the glow outline). */
+const DARKEN = 0.4
+/** Outline of glowing black text (the game's 0xF0EBCC). */
+const BLACK_GLOW_OUTLINE = 0xf0ebcc
+
 /** CSS color of a sign side's text. */
 export function signTextColor(side: SignSide): string {
   const base = SIGN_COLORS[side.color] ?? 0
-  const factor = side.glowing || base === 0 ? 1 : 0.4
-  const r = Math.round(((base >> 16) & 0xff) * factor)
-  const g = Math.round(((base >> 8) & 0xff) * factor)
-  const b = Math.round((base & 0xff) * factor)
-  return `rgb(${r} ${g} ${b})`
+  return rgb(base, side.glowing || base === 0 ? 1 : DARKEN)
+}
+
+/** CSS color of the outline of glowing text. */
+export function signOutlineColor(side: SignSide): string {
+  const base = SIGN_COLORS[side.color] ?? 0
+  return base === 0 ? rgb(BLACK_GLOW_OUTLINE, 1) : rgb(base, DARKEN)
 }

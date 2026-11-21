@@ -281,6 +281,9 @@ export const en: Messages = {
     signsTitle: 'Too many signs',
     signsSkipped:
       'The text of {count} sign sides is not shown, to avoid exhausting graphics memory.',
+    signFontTitle: 'Sign text without the game font',
+    signFontMissing:
+      'The loaded Minecraft resources are from an earlier version of the viewer and do not include the font. Load the client.jar again to see signs with the game font.',
     missingTitle: 'Blocks without a model',
     missing:
       '{count} block types have no model in the loaded assets and are shown with the missing texture.',

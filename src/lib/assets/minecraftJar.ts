@@ -9,7 +9,8 @@ import { readZip, type ZipLimits } from './zipReader'
  * - `assets/minecraft/blockstates/*.json`
  * - `assets/minecraft/models/{block,item}/**.json`
  * - `assets/minecraft/items/*.json` (item model definitions, 1.21.4+)
- * - `assets/minecraft/textures/{block,item,entity,colormap}/**.{png,mcmeta}`
+ * - `assets/minecraft/textures/{block,item,entity,colormap,font}/**.{png,mcmeta}`
+ * - `assets/minecraft/font/**.json` (font definitions, for sign text)
  * - `assets/minecraft/lang/en_us.json` (the only language inside the jar)
  */
 
@@ -17,7 +18,8 @@ const WANTED = [
   /^assets\/minecraft\/blockstates\/[^/]+\.json$/,
   /^assets\/minecraft\/models\/(block|item)\/.+\.json$/,
   /^assets\/minecraft\/items\/[^/]+\.json$/,
-  /^assets\/minecraft\/textures\/(block|item|entity|colormap)\/.+\.(png|mcmeta)$/,
+  /^assets\/minecraft\/textures\/(block|item|entity|colormap|font)\/.+\.(png|mcmeta)$/,
+  /^assets\/minecraft\/font\/.+\.json$/,
   /^assets\/minecraft\/lang\/en_us\.json$/,
 ]
 

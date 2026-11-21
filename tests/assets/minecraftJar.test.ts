@@ -49,6 +49,10 @@ describe('isWantedJarEntry', () => {
     expect(isWantedJarEntry('assets/minecraft/textures/block/stone.png')).toBe(true)
     expect(isWantedJarEntry('assets/minecraft/textures/colormap/grass.png')).toBe(true)
     expect(isWantedJarEntry('assets/minecraft/lang/en_us.json')).toBe(true)
+    // The font, for sign text.
+    expect(isWantedJarEntry('assets/minecraft/font/default.json')).toBe(true)
+    expect(isWantedJarEntry('assets/minecraft/font/include/default.json')).toBe(true)
+    expect(isWantedJarEntry('assets/minecraft/textures/font/ascii.png')).toBe(true)
     expect(isWantedJarEntry('assets/minecraft/textures/gui/title.png')).toBe(false)
     expect(isWantedJarEntry('assets/minecraft/shaders/core/x.vsh')).toBe(false)
     expect(isWantedJarEntry('net/minecraft/client/Main.class')).toBe(false)

@@ -80,6 +80,13 @@
           message: { key: 'viewer.signsSkipped', params: { count: shown.signsSkipped } },
         })
       }
+      if (shown.signFontMissing) {
+        toasts.push({
+          kind: 'info',
+          title: { key: 'viewer.signFontTitle' },
+          message: { key: 'viewer.signFontMissing' },
+        })
+      }
       if (shown.missingBlocks.length > 0) {
         toasts.push({
           kind: 'info',
