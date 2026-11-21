@@ -3,7 +3,10 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import { DEFAULT_MAX_DECOMPRESSED_BYTES } from '../../parsers/nbt/decompress'
   import { MAX_STRUCTURE_VOLUME } from '../../parsers/structureBuilder'
+  import { buildMaterialList } from '../../materials/materialList'
   import { importState } from '../../stores/importState.svelte'
+  import { materialProgress, materialsStorageKey } from '../../stores/materials.svelte'
+  import MaterialList from '../materials/MaterialList.svelte'
   import { toasts } from '../../stores/toasts.svelte'
   import { formatBytes, formatCount } from '../../utils/format'
   import { checkStructureFile } from '../../utils/structureFile'
@@ -16,6 +19,9 @@
 
   const status = $derived(importState.status)
   const current = $derived(importState.current)
+  const materials = $derived(
+    status.kind === 'ready' && status.structure ? buildMaterialList(status.structure) : null,
+  )
 
   async function handleFiles(files: File[]): Promise<void> {
     if (files.length !== 1) {
@@ -61,6 +67,8 @@
     }
 
     const { info } = outcome
+    // Restore the quantities the user entered for this file in a past visit.
+    materialProgress.open(materialsStorageKey(file))
     if (info.format !== check.format) {
       toasts.push({
         kind: 'info',
@@ -85,7 +93,7 @@
 
 <WindowDropTarget bind:dragging onfiles={handleFiles} />
 
-<div class="screen">
+<div class="screen" class:wide={materials !== null && status.kind === 'ready' && !dragging}>
   {#if status.kind === 'reading' && current}
     <ReadingProgress
       fileName={current.file.name}
@@ -93,13 +101,18 @@
       oncancel={() => importState.cancel()}
     />
   {:else if status.kind === 'ready' && current && !dragging}
-    <StructureSummary
-      fileName={current.file.name}
-      info={status.info}
-      structure={status.structure}
-      accept={STRUCTURE_ACCEPT}
-      onfiles={handleFiles}
-    />
+    <div class="result">
+      <StructureSummary
+        fileName={current.file.name}
+        info={status.info}
+        structure={status.structure}
+        accept={STRUCTURE_ACCEPT}
+        onfiles={handleFiles}
+      />
+      {#if materials}
+        <MaterialList list={materials} />
+      {/if}
+    </div>
   {:else}
     <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={handleFiles} />
   {/if}
@@ -123,6 +136,30 @@
       linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
     background-size: var(--grid-size) var(--grid-size);
     background-position: center;
+  }
+
+  .screen.wide {
+    grid-template-columns: minmax(0, 1240px);
+    place-content: start center;
+  }
+
+  /* Summary and materials side by side; stacked on narrow screens. */
+  .result {
+    display: grid;
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+    width: 100%;
+  }
+
+  .result > :global(*) {
+    width: 100%;
+  }
+
+  @media (max-width: 1000px) {
+    .result {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   .note {

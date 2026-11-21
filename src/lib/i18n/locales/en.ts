@@ -122,6 +122,48 @@ export const en: Messages = {
     approximateLegacy:
       'File from before Minecraft 1.13: blocks that depend on their neighbors (fences, stairs, doors…) may show their default shape.',
   },
+  materials: {
+    title: 'Materials',
+    totals: '{items} items · {types} types',
+    progress: '{done} of {total} gathered',
+    hint: 'Type how many of each material you have under “Have” to see how many are missing.',
+    search: 'Search materials',
+    sort: {
+      label: 'Sort',
+      required: 'Most needed',
+      missing: 'Most missing',
+      name: 'Name',
+    },
+    filter: {
+      label: 'Show',
+      all: 'All',
+      pending: 'Pending',
+      done: 'Complete',
+    },
+    columns: {
+      material: 'Material',
+      required: 'Needed',
+      stacks: 'Stacks',
+      owned: 'Have',
+      missing: 'Missing',
+    },
+    ownedLabel: 'How many {name} you have',
+    complete: 'Complete',
+    stacksValue: '{stacks} × {size} + {rest}',
+    stacksOnly: '{stacks} × {size}',
+    shulkers: '≈ {boxes} shulker boxes',
+    clear: 'Clear quantities',
+    empty: 'This structure needs no materials.',
+    noResults: 'No material matches the search.',
+    namesNote:
+      'Provisional names based on the block id. Official names will come when the Minecraft assets are loaded.',
+    special: {
+      title: 'Fluids and unobtainable blocks',
+      hint: 'Fluids are placed with a bucket. Unobtainable blocks cannot be obtained in survival.',
+      fluid: 'Fluid (bucket)',
+      unobtainable: 'Unobtainable',
+    },
+  },
   toast: {
     region: 'Notifications',
     close: 'Close notification',

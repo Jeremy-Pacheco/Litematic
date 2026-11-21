@@ -107,15 +107,26 @@ Medido con `pnpm test:perf` (`tests/perf/mceditParser.perf.test.ts`): 512 × 256
   (`worker.format: 'es'` en `vite.config.ts`); el formato por defecto (`iife`) metía la tabla
   dentro del worker (118 kB).
 
+## Lista de materiales (`feature/material-list`)
+
+- El recuento por estado (`blockCounts`) se hace en **la misma pasada** que ya contaba los bloques
+  que no son aire, dentro del worker. Repetidas las mediciones de los tres parsers tras el cambio:
+  mismas cifras (±3 %).
+- `blockCounts` se **transfiere** al hilo principal junto con `blocks`.
+- La lista se calcula en el hilo principal a partir de la paleta (decenas o cientos de entradas),
+  no de los bloques: su coste no depende del tamaño de la estructura.
+- La tabla de materiales tiene como mucho unos cientos de filas, así que no necesita
+  virtualización.
+
 ## Compilación
 
-Tras `feature/legacy-schematic-parser`:
+Tras `feature/material-list`:
 
 | Archivo               |   Tamaño |     gzip |
 | --------------------- | -------: | -------: |
-| `index.js`            | 76,13 kB | 28,64 kB |
-| `index.css`           | 11,09 kB |  2,58 kB |
-| `structure.worker.js` | 19,28 kB |        — |
+| `index.js`            | 92,21 kB | 34,00 kB |
+| `index.css`           | 15,97 kB |  3,35 kB |
+| `structure.worker.js` | 19,36 kB |        — |
 | `legacyBlocks.js`     | 99,26 kB |  12,3 kB |
 
 Deepslate no se incluye en el build: por ahora solo lo usan los tests.
