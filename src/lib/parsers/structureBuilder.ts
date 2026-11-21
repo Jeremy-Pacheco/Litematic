@@ -78,11 +78,15 @@ export function allocateBlocks(size: Vec3, paletteSize: number): Uint16Array | U
 }
 
 /** Finishes a structure, counting the positions that are not air. */
+/**
+ * Finishes a structure: counts how many times each palette state is used, in
+ * a single pass over the blocks (the material list is built from these counts).
+ */
 export function finishStructure(parts: StructureParts): Structure {
-  let nonAir = 0
-  const { blocks } = parts
-  for (let i = 0; i < blocks.length; i++) if (blocks[i] !== 0) nonAir++
-  return { ...parts, nonAirBlocks: nonAir }
+  const { blocks, palette } = parts
+  const blockCounts = new Uint32Array(palette.length)
+  for (let i = 0; i < blocks.length; i++) blockCounts[blocks[i]]++
+  return { ...parts, blockCounts, nonAirBlocks: blocks.length - blockCounts[0] }
 }
 
 export function emptyWarnings(): StructureWarnings {

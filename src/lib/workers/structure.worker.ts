@@ -37,7 +37,7 @@ scope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     // The block array is transferred, not copied: it moves to the main thread
     // in constant time. Block entity NBT was already detached from the file
     // buffer by the parser, so the decompressed data is not cloned.
-    const transfer = structure ? [structure.blocks.buffer] : []
+    const transfer = structure ? [structure.blocks.buffer, structure.blockCounts.buffer] : []
     post({ type: 'done', info, structure }, transfer)
   } catch (error) {
     const readError = toStructureReadError(error)

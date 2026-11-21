@@ -85,6 +85,8 @@ export interface Structure {
   blocks: Uint16Array | Uint32Array
   /** Positions that are not air. */
   nonAirBlocks: number
+  /** How many positions use each palette state (same index as `palette`). */
+  blockCounts: Uint32Array
   blockEntities: BlockEntity[]
   entities: Entity[]
   regions: StructureRegion[]
