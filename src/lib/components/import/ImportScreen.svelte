@@ -1,12 +1,22 @@
 <script lang="ts">
-  import { STRUCTURE_ACCEPT } from '../../constants/formats'
+  import { STRUCTURE_ACCEPT, STRUCTURE_EXTENSIONS } from '../../constants/formats'
   import { i18n } from '../../i18n/i18n.svelte'
+  import { DEFAULT_MAX_DECOMPRESSED_BYTES } from '../../parsers/nbt/decompress'
   import { importState } from '../../stores/importState.svelte'
   import { toasts } from '../../stores/toasts.svelte'
+  import { formatBytes } from '../../utils/format'
   import { checkStructureFile } from '../../utils/structureFile'
   import DropZone from './DropZone.svelte'
+  import ReadingProgress from './ReadingProgress.svelte'
+  import StructureSummary from './StructureSummary.svelte'
+  import WindowDropTarget from './WindowDropTarget.svelte'
 
-  function handleFiles(files: File[]): void {
+  let dragging = $state(false)
+
+  const status = $derived(importState.status)
+  const current = $derived(importState.current)
+
+  async function handleFiles(files: File[]): Promise<void> {
     if (files.length !== 1) {
       toasts.push({
         kind: 'error',
@@ -17,7 +27,7 @@
     }
 
     const [file] = files
-    const params = { name: file.name }
+    const name = file.name
     const check = checkStructureFile(file)
 
     if (!check.ok) {
@@ -25,23 +35,71 @@
       toasts.push({
         kind: 'error',
         title: { key: `${prefix}Title` },
-        message: { key: prefix, params },
+        message: { key: prefix, params: { name } },
       })
       return
     }
 
-    importState.select(file, check.format)
-    // Reading arrives in feature/nbt-reader; say so instead of pretending.
+    const outcome = await importState.load(file, check.format)
+
+    if (outcome.kind === 'superseded') return
+
+    if (outcome.kind === 'error') {
+      const params = {
+        name,
+        limit: formatBytes(DEFAULT_MAX_DECOMPRESSED_BYTES, 0, i18n.locale),
+        detail: outcome.message,
+      }
+      toasts.push({
+        kind: outcome.code === 'cancelled' ? 'info' : 'error',
+        title: { key: `import.errors.${outcome.code}.title` },
+        message: { key: `import.errors.${outcome.code}.message`, params },
+      })
+      return
+    }
+
+    const { info } = outcome
+    if (info.format !== check.format) {
+      toasts.push({
+        kind: 'info',
+        title: { key: 'import.mismatchTitle' },
+        message: {
+          key: 'import.mismatch',
+          params: {
+            name,
+            extension: STRUCTURE_EXTENSIONS[check.format],
+            format: i18n.t(`format.${info.format}`),
+          },
+        },
+      })
+    }
     toasts.push({
-      kind: 'info',
-      title: { key: 'import.notReadyTitle' },
-      message: { key: 'import.notReady', params },
+      kind: 'success',
+      title: { key: 'import.readyTitle' },
+      message: { key: 'import.ready', params: { name, time: info.durationMs } },
     })
   }
 </script>
 
+<WindowDropTarget bind:dragging onfiles={handleFiles} />
+
 <div class="screen">
-  <DropZone accept={STRUCTURE_ACCEPT} onfiles={handleFiles} />
+  {#if status.kind === 'reading' && current}
+    <ReadingProgress
+      fileName={current.file.name}
+      progress={status.progress}
+      oncancel={() => importState.cancel()}
+    />
+  {:else if status.kind === 'ready' && current && !dragging}
+    <StructureSummary
+      fileName={current.file.name}
+      info={status.info}
+      accept={STRUCTURE_ACCEPT}
+      onfiles={handleFiles}
+    />
+  {:else}
+    <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={handleFiles} />
+  {/if}
   <p class="note">{i18n.t('import.localNote')}</p>
 </div>
 
