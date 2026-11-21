@@ -1,5 +1,4 @@
 import type { BakedModels } from '../models/bakeModels'
-import { DEFAULT_BIOME, type BiomeId } from '../models/biomes'
 import type { BlockRenderData } from '../models/blockEntityRender'
 import type { BlockState } from '../types/structure'
 import type {
@@ -26,7 +25,6 @@ export const ModelManager = {
   bake(
     palette: readonly BlockState[],
     data: readonly (BlockRenderData | null)[] = [],
-    biome: BiomeId = DEFAULT_BIOME,
   ): { promise: Promise<BakedModels>; cancel: () => void } {
     const worker = new Worker(new URL('../workers/models.worker.ts', import.meta.url), {
       type: 'module',
@@ -49,12 +47,7 @@ export const ModelManager = {
         worker.terminate()
         reject(new ModelBakeError('bake-failed', event.message || 'Worker error'))
       }
-      const request: ModelsWorkerRequest = {
-        type: 'bake',
-        palette: [...palette],
-        data: [...data],
-        biome,
-      }
+      const request: ModelsWorkerRequest = { type: 'bake', palette: [...palette], data: [...data] }
       worker.postMessage(request)
     })
 

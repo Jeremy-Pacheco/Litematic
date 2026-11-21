@@ -148,18 +148,6 @@ incluye una tabla de formatos → versiones, para no inventar correspondencias.
   emisivos, etc.
 - Las animaciones muestran su primer fotograma, como las del juego.
 
-## Biomas (`feature/biome-colors`)
-
-Las estructuras no guardan su bioma (los `.litematic` no lo tienen), así que el usuario elige uno
-en la barra del visor (llanura por defecto, recordado entre visitas). Hierba y hojas toman su color
-de los mapas de color del juego (`colormap/grass.png` y `foliage.png`, también de un resource
-pack) en la temperatura y humedad del bioma, como el juego; pantano, manglar, páramo y cerezal usan
-sus colores fijos y el bosque oscuro oscurece la hierba. El agua toma el color de agua del bioma.
-Las hojas de abeto y abedul conservan su color fijo, como en el juego. El worker de modelos cambia
-los tintes de `BlockColors` de Deepslate antes de preparar los modelos, así que cambiar de bioma
-rehace modelos y geometría, sin volver a leer la estructura.
-
 ## Pendiente
 
-- Leer los biomas de los `.schem` v3 que los guardan (ahora se usa uno para toda la estructura).
 - Texto de los carteles colgantes.

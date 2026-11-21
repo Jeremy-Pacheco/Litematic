@@ -1,5 +1,4 @@
 import type { BakedModels } from '../models/bakeModels'
-import type { BiomeId } from '../models/biomes'
 import type { BlockRenderData } from '../models/blockEntityRender'
 import type { BlockState } from '../types/structure'
 
@@ -8,8 +7,6 @@ export type ModelsWorkerRequest = {
   palette: BlockState[]
   /** Render data per palette index (banner patterns…). */
   data: (BlockRenderData | null)[]
-  /** Biome whose grass, foliage and water tints are used. */
-  biome: BiomeId
 }
 
 export type ModelsErrorCode = 'no-assets' | 'bake-failed'
