@@ -1,8 +1,7 @@
 # Renderizado
 
-> **Estado:** la **preparación de modelos** (`feature/block-models`) está implementada. El visor
-> 3D (`feature/structure-viewer`) y el sistema de capas (`feature/layer-system`) están
-> **pendientes**: todavía no se dibuja nada en pantalla.
+> **Estado:** la preparación de modelos y el **visor 3D** están implementados. El sistema de capas
+> (`feature/layer-system`) y el inspector de bloques (`feature/block-inspector`) están **pendientes**.
 
 ## Preparación de modelos («bake»)
 
@@ -72,6 +71,64 @@ patrones todavía), cabezas, cajas de shulker, campanas, macetas decoradas y flu
 Un bloque sin modelo (más nuevo que los recursos cargados, o de un mod) se dibuja como un cubo con
 la textura de «falta textura» de Minecraft (cuadros magenta y negros) y se lista en
 `missingBlocks`. Nunca se inventa una textura.
+
+## Visor 3D (`feature/structure-viewer`)
+
+```text
+estructura leída ─► App cambia al visor (ViewerScreen, cargado bajo demanda con Three.js)
+   └─ StructureViewer ─► SceneManager (renderizador, escena, dibujado bajo demanda)
+                       └─ StructureManager.show(structure)
+                            1. ModelManager.bake(paleta)        [models worker]
+                            2. atlas → DataTexture, 3 materiales
+                            3. Mesher por secciones de 16³      [mesher worker]
+                            4. secciones en cola → escena, con presupuesto por frame
+```
+
+### Geometría por secciones (`viewer/mesher.ts`)
+
+- La estructura se divide en secciones de 16 × 16 × 16. Cada sección produce **una malla por
+  capa** (opaca, recortada, translúcida): pocas _draw calls_ y _frustum culling_ por sección.
+- Por cada bloque se copian los quads preparados de su estado, desplazados a su posición.
+- **Eliminación de caras ocultas:** una cara del lado `d` se omite si el vecino en `d` cubre el
+  lado opuesto con caras opacas (`opaqueFaces`), o si es el mismo estado no opaco y ambos cubren
+  el lado compartido (cristal contra cristal). Las caras interiores (grupo 6) nunca se omiten.
+- Formato compacto de vértices: posiciones `Float32`, UV `Uint16` normalizadas, color `Uint8`
+  normalizado e índices `Uint16` cuando caben. Ocupa menos de la mitad que todo en 32 bits.
+- El worker envía cada sección en cuanto la termina (de abajo arriba) y **transfiere** sus arrays.
+  El array de bloques se le envía **copiado** (decisión aprobada; compartirlo con
+  `SharedArrayBuffer` exigiría cabeceras COOP/COEP y se valorará en la optimización final).
+
+### Aspecto
+
+- **Sombreado fijo por cara como Minecraft** (arriba 100 %, norte/sur 80 %, este/oeste 60 %,
+  abajo 50 %) multiplicado por el tinte en los colores de vértice: materiales sin luces
+  (`MeshBasicMaterial`), baratos.
+- Atlas con filtrado `Nearest`, sin mipmaps. Cada textura lleva un **borde de 1 px** que repite
+  sus píxeles extremos: evita leer la textura vecina del atlas a distancia (antes se veían puntos
+  magenta).
+- Capa recortada con `alphaTest`; translúcida con mezcla, sin escribir profundidad, dibujada al
+  final y en **una sola pasada** (`forceSinglePass`; Three dibujaría dos veces los materiales
+  transparentes de doble cara).
+- Caras de doble cara: algunos modelos (plantas en cruz, paneles) se ven por ambos lados.
+
+### Interacción y opciones
+
+- Cámara orbital (`CameraManager`): rotar (botón izquierdo), desplazar (derecho), zoom (rueda).
+  **Ajustar** encuadra la estructura manteniendo la dirección; vistas **Iso / Arriba / Frente /
+  Lado**.
+- Cuadrícula, caja de dimensiones, fondo (tema, oscuro, claro, cielo) y panel lateral; se guardan
+  en `localStorage`.
+- Sin recursos de Minecraft cargados, el visor los pide y no dibuja nada (no se inventan texturas).
+
+### Rendimiento y recursos
+
+- **Dibujado bajo demanda:** solo se dibuja cuando cambia la cámara o la escena (comprobado: 0
+  frames con la imagen quieta).
+- **Subida progresiva a la GPU:** las secciones se añaden a la escena con un presupuesto de 200 000
+  vértices por frame, para no subir cientos de MB en un solo frame.
+- Al cambiar de estructura se liberan geometrías, materiales y atlas; si el navegador pierde el
+  contexto WebGL, se reconstruye al recuperarlo.
+- Mediciones en [PERFORMANCE.md](PERFORMANCE.md).
 
 ## Limitaciones conocidas
 

@@ -10,7 +10,7 @@ src/
 │   │   ├── controls/    Controles reutilizables (Button, Icon, SegmentedControl…)
 │   │   ├── import/      Pantalla de importación y zona de arrastrar y soltar
 │   │   ├── feedback/    Notificaciones
-│   │   ├── viewer/      Lienzo 3D (pendiente)
+│   │   ├── viewer/      Visor 3D: lienzo, barra de herramientas y pantalla
 │   │   ├── materials/   Lista de materiales (MaterialList, MaterialRow)
 │   │   ├── layers/      Selector de capas (pendiente)
 │   │   └── dialogs/     Ventanas modales (pendiente)
@@ -22,7 +22,9 @@ src/
 │   ├── stores/          Estado global reactivo (runas de Svelte 5)
 │   ├── constants/       Constantes compartidas
 │   ├── utils/           Funciones puras sin dependencias de la interfaz
-│   ├── managers/        AssetManager (recursos del juego); escena y cámara pendientes
+│   ├── managers/        Recursos, modelos, escena, cámara y estructura en 3D
+│   ├── viewer/          Geometría por secciones (mesher) y materiales de Three.js
+│   ├── import/          Apertura de archivos (compartida por importación y visor)
 │   ├── assets/          Lectura segura de ZIP, client.jar y caché IndexedDB
 │   ├── parsers/         Lectura de archivos: NBT, detección de formato y errores
 │   │   └── nbt/         Descompresión y lector NBT propio
@@ -58,6 +60,15 @@ docs/                    Documentación
 | `models/bakeModels.ts`                 | Flujo completo: texturas usadas → atlas → estados                                         |
 | `managers/ModelManager.ts`             | API para el visor: prepara una paleta en un worker                                        |
 | `managers/AssetManager.ts`             | API de recursos del juego para el resto de la app; worker por jar                         |
+| `models/bakedTypes.ts`                 | Tipos y constantes del bake sin Deepslate (los usa el mesher)                             |
+| `viewer/mesher.ts`                     | Secciones de 16³ → mallas por capa, caras ocultas, sombreado por cara                     |
+| `viewer/materials.ts`                  | Textura del atlas y un material por capa                                                  |
+| `workers/mesher.worker.ts`             | Genera las secciones fuera del hilo principal y las envía según se terminan               |
+| `managers/SceneManager.ts`             | Renderizador, escena, dibujado bajo demanda, ayudas, liberación, pérdida de contexto      |
+| `managers/CameraManager.ts`            | Controles orbitales, ajustar y vistas predefinidas                                        |
+| `managers/StructureManager.ts`         | Estructura → modelos → atlas → secciones en la escena (subida repartida por frames)       |
+| `stores/viewer.svelte.ts`              | Opciones del visor guardadas (cuadrícula, caja, fondo, panel)                             |
+| `import/openStructureFiles.ts`         | Abre archivos y comunica el resultado (importación y visor)                               |
 | `stores/assets.svelte.ts`              | Estado de los recursos para la interfaz y tabla de idioma                                 |
 | `components/dialogs/AssetsDialog`      | Diálogo «Recursos de Minecraft» (`<dialog>` nativo)                                       |
 | `components/layout/AssetsIndicator`    | Indicador de recursos en la barra superior                                                |
@@ -152,7 +163,7 @@ importState.load(file) ─► readStructureInWorker ─► [worker] readStructur
 ReadingProgress (barra + cancelar)            StructureFileInfo | StructureReadError
      │
      ▼
-StructureSummary (formato, dimensiones, bloques, paleta, regiones, avisos…) + notificación
+ViewerScreen (cargado bajo demanda): visor 3D + StructureSummary + lista de materiales
 ```
 
 1. El usuario elige un archivo o lo suelta en cualquier parte de la ventana.
@@ -169,6 +180,10 @@ StructureSummary (formato, dimensiones, bloques, paleta, regiones, avisos…) + 
 
 Los tres formatos tienen parser. El de MCEdit es asíncrono: carga bajo demanda la tabla de IDs
 antiguos (`data/legacyBlocks.json`), que es un fragmento aparte del build.
+
+Con la estructura lista, `App` cambia al visor (ver [RENDERING.md](RENDERING.md)). La lógica de
+abrir archivos vive en `import/openStructureFiles.ts`, así el visor admite soltar o abrir otro
+archivo sin volver a la pantalla de importación.
 
 ## Lista de materiales
 
