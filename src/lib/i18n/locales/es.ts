@@ -417,6 +417,25 @@ export const es = {
       twoYears: '2 años',
     },
   },
+  credits: {
+    title: 'Créditos',
+    close: 'Cerrar',
+    intro:
+      'LitematicViewer es posible gracias a estos proyectos de código abierto. Gracias a sus autores.',
+    roles: {
+      deepslate:
+        'Lee los modelos de bloque de Minecraft y dibuja cofres, estandartes y fluidos. Es la base del visor 3D: sin él no existiría.',
+      three: 'Dibuja la estructura en 3D con WebGL.',
+      fflate: 'Lee el client.jar y los resource packs (.zip).',
+      svelte: 'La interfaz de la aplicación.',
+      minecraftData: 'Tabla de IDs antiguos de bloques para abrir archivos .schematic.',
+    },
+    licenses: 'Licencias completas del software incluido (licenses.txt)',
+    madeBy: 'Desarrollado por Jéremy Paul Pacheco Oña. Código abierto (MIT):',
+    source: 'repositorio en GitHub',
+    notOfficial:
+      'No es un producto oficial de Minecraft. No está aprobado por Mojang ni Microsoft ni asociado con ellos. Las texturas y modelos proceden de tu propia copia del juego.',
+  },
   toast: {
     region: 'Notificaciones',
     close: 'Cerrar notificación',

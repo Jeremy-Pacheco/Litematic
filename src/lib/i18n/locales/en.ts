@@ -407,6 +407,25 @@ export const en: Messages = {
       twoYears: '2 years',
     },
   },
+  credits: {
+    title: 'Credits',
+    close: 'Close',
+    intro:
+      'LitematicViewer is possible thanks to these open source projects. Thanks to their authors.',
+    roles: {
+      deepslate:
+        'Reads the Minecraft block models and draws chests, banners and fluids. It is the base of the 3D viewer: it would not exist without it.',
+      three: 'Draws the structure in 3D with WebGL.',
+      fflate: 'Reads the client.jar and resource packs (.zip).',
+      svelte: 'The user interface.',
+      minecraftData: 'Table of old block ids to open .schematic files.',
+    },
+    licenses: 'Full licenses of the included software (licenses.txt)',
+    madeBy: 'Made by Jéremy Paul Pacheco Oña. Open source (MIT):',
+    source: 'GitHub repository',
+    notOfficial:
+      'Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Textures and models come from your own copy of the game.',
+  },
   toast: {
     region: 'Notifications',
     close: 'Close notification',

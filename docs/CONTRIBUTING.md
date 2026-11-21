@@ -73,3 +73,11 @@ La app se publica en **https://litematic.jeremypacheco.es** con GitHub Pages:
 ## Dependencias
 
 Se usa **pnpm**. No se añaden dependencias sin aprobarlo previamente.
+
+### Licencias de terceros
+
+`pnpm build` compila con source maps ocultos y `scripts/third-party-licenses.mjs` lee de qué
+paquetes viene el código incluido, escribe `dist/licenses.txt` con el aviso de cada uno y borra
+los source maps (no se publican). Si un paquete incluido no tiene información de licencia, el build
+falla. Al añadir una dependencia, añade también su crédito en `src/lib/constants/credits.ts` y en
+el README si es relevante para el usuario.
