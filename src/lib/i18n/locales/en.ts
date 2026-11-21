@@ -21,6 +21,7 @@ export const en: Messages = {
     formats: '.litematic · .schem · .schematic',
     open: 'Open file',
     dropHere: 'Drop the file to open it',
+    dropAssets: 'You can also drop your client.jar or a resource pack (.zip) here.',
     localNote: 'Files are processed in your browser. Nothing is uploaded to any server.',
     openAnother: 'Open another file',
     selected: 'Selected file',

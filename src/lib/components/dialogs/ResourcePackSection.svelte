@@ -3,6 +3,7 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import { assets } from '../../stores/assets.svelte'
   import { resourcePack } from '../../stores/resourcePack.svelte'
+  import { importResourcePack } from '../../import/openAssetFiles'
   import { toasts } from '../../stores/toasts.svelte'
   import { formatBytes, formatCount } from '../../utils/format'
   import Button from '../controls/Button.svelte'
@@ -28,35 +29,7 @@
   })
 
   async function onFiles(files: File[]): Promise<void> {
-    const [file] = files
-    if (!file) return
-    const outcome = await resourcePack.importPack(file, gameFormat)
-    if (outcome.kind === 'ready') {
-      toasts.push({
-        kind: 'success',
-        title: { key: 'pack.readyTitle' },
-        message: { key: 'pack.ready', params: { name: file.name } },
-      })
-      if (packCompatibility(outcome.meta.supported, gameFormat) === 'other-version') {
-        toasts.push({
-          kind: 'info',
-          title: { key: 'pack.otherVersionTitle' },
-          message: { key: 'pack.otherVersionMessage', params: { name: file.name } },
-        })
-      }
-    } else if (outcome.code === 'not-zip') {
-      toasts.push({
-        kind: 'error',
-        title: { key: 'pack.notZipTitle' },
-        message: { key: 'pack.notZip', params: { name: file.name } },
-      })
-    } else {
-      toasts.push({
-        kind: outcome.code === 'cancelled' ? 'info' : 'error',
-        title: { key: `assets.errors.${outcome.code}.title` },
-        message: { key: `assets.errors.${outcome.code}.message`, params: { name: file.name } },
-      })
-    }
+    if (files[0]) await importResourcePack(files[0])
   }
 
   async function remove(): Promise<void> {
