@@ -73,6 +73,13 @@
           message: { key: 'pack.reduced', params: { scale: shown.textureScale } },
         })
       }
+      if (shown.signsSkipped > 0) {
+        toasts.push({
+          kind: 'info',
+          title: { key: 'viewer.signsTitle' },
+          message: { key: 'viewer.signsSkipped', params: { count: shown.signsSkipped } },
+        })
+      }
       if (shown.missingBlocks.length > 0) {
         toasts.push({
           kind: 'info',

@@ -1,4 +1,7 @@
+import { textOf } from '../utils/textComponent'
 import { AssetError } from './errors'
+
+export { textOf }
 import { readZip, type ZipLimits } from './zipReader'
 
 /**
@@ -185,22 +188,6 @@ function majorOf(value: unknown): number | null {
   if (Number.isInteger(value)) return value as number
   if (Array.isArray(value) && Number.isInteger(value[0])) return value[0] as number
   return null
-}
-
-/** Plain text of a description: a string or a text component (object or array). */
-export function textOf(value: unknown, depth = 0): string {
-  if (depth > 16) return ''
-  let text = ''
-  if (typeof value === 'string') text = value
-  else if (typeof value === 'number' || typeof value === 'boolean') text = String(value)
-  else if (Array.isArray(value)) text = value.map((part) => textOf(part, depth + 1)).join('')
-  else if (typeof value === 'object' && value !== null) {
-    const own = field(value, 'text') ?? field(value, 'translate') ?? ''
-    const extra = field(value, 'extra')
-    text = textOf(own, depth + 1) + (Array.isArray(extra) ? textOf(extra, depth + 1) : '')
-  }
-  // Remove legacy formatting codes (§a, §l…).
-  return text.replace(/§./g, '').slice(0, 500)
 }
 
 /**

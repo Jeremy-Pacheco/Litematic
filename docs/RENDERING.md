@@ -63,8 +63,21 @@ Minecraft no guarda la capa en los recursos, así que se deduce del **canal alfa
 ### Bloques especiales
 
 Los bloques que Minecraft dibuja como entidades no tienen modelo JSON y se generan con los
-`SpecialRenderers` de Deepslate: cofres, carteles (sin texto), camas, estandartes, cabezas, cajas
-de shulker, campanas, macetas decoradas y fluidos.
+`SpecialRenderers` de Deepslate: cofres, estandartes, cabezas, cajas de shulker, campanas,
+macetas decoradas y fluidos. Si el juego ya trae modelo JSON del bloque (en 26.x, carteles y
+camas), se usa ese modelo y no el de Deepslate, que pediría texturas de rutas antiguas; a un bloque
+anegado se le sigue añadiendo el agua.
+
+### Texto de los carteles (`viewer/signText.ts`, `viewer/signTextMeshes.ts`)
+
+El texto se lee del block entity en todos sus formatos (`front_text`/`back_text` de 1.20+, con
+mensajes JSON o componentes NBT de 1.21.5+; `Text1`…`Text4` anteriores; dentro de `Data` en
+Sponge v3), sin caracteres de control y con 90 caracteres por línea como mucho. Cada cara con
+texto es una casilla de 256 × 128 px en páginas de 2048 px (128 por página, como mucho 4 páginas):
+una malla y una textura por página, recortadas por los mismos planos de las capas. El texto se
+coloca delante del tablero con la misma transformación de Deepslate (giro de 16 posiciones o
+orientación de pared). Color de tinte del juego, oscurecido salvo con texto brillante (que lleva
+contorno). Limitaciones: carteles colgantes sin texto; la letra es la del sistema, no la del juego.
 
 ### Estandartes con dibujos (`models/blockEntityRender.ts`)
 

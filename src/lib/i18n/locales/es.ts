@@ -288,6 +288,9 @@ export const es = {
     error: 'No se ha podido mostrar la estructura en 3D.',
     errorTitle: 'Error en el visor',
     retry: 'Reintentar',
+    signsTitle: 'Demasiados carteles',
+    signsSkipped:
+      'El texto de {count} caras de carteles no se muestra para no agotar la memoria gráfica.',
     missingTitle: 'Bloques sin modelo',
     missing:
       '{count} tipos de bloque no tienen modelo en los recursos cargados y se muestran con la textura de «falta textura».',
