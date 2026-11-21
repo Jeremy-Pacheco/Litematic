@@ -1,9 +1,13 @@
 <script lang="ts">
   import { STRUCTURE_ACCEPT } from '../../constants/formats'
   import { openStructureFiles } from '../../import/openStructureFiles'
+  import { i18n } from '../../i18n/i18n.svelte'
+  import { LayerCounts } from '../../materials/layerCounts'
   import { buildMaterialList } from '../../materials/materialList'
+  import { layers } from '../../stores/layers.svelte'
   import { importState } from '../../stores/importState.svelte'
-  import { viewer } from '../../stores/viewer.svelte'
+  import { MATERIAL_SCOPES, viewer, type MaterialScope } from '../../stores/viewer.svelte'
+  import SegmentedControl from '../controls/SegmentedControl.svelte'
   import type { StructureFileInfo } from '../../parsers/readStructureFile'
   import type { Structure } from '../../types/structure'
   import StructureSummary from '../import/StructureSummary.svelte'
@@ -21,7 +25,33 @@
   let { fileName, info, structure }: Props = $props()
 
   let dragging = $state(false)
-  const materials = $derived(buildMaterialList(structure))
+  // Materials of the whole structure, the current layer or the visible layers.
+  const layerCounts = $derived(new LayerCounts(structure))
+  const scopeRange = $derived.by(() => {
+    if (viewer.materialScope === 'layer') return { min: layers.current, max: layers.current }
+    if (viewer.materialScope === 'visible' && layers.range) return layers.range
+    return null
+  })
+  const materials = $derived(
+    buildMaterialList({
+      palette: structure.palette,
+      blockCounts: scopeRange
+        ? layerCounts.forRange(scopeRange.min, scopeRange.max)
+        : structure.blockCounts,
+    }),
+  )
+  const scopeOptions = $derived(
+    MATERIAL_SCOPES.map((value) => ({
+      value,
+      label: i18n.t(`materials.scope.${value}`),
+      text: i18n.t(`materials.scope.${value}`),
+    })),
+  )
+
+  function setScope(value: MaterialScope): void {
+    viewer.materialScope = value
+    viewer.save()
+  }
 </script>
 
 <WindowDropTarget bind:dragging onfiles={openStructureFiles} />
@@ -50,7 +80,28 @@
         accept={STRUCTURE_ACCEPT}
         onfiles={openStructureFiles}
       />
-      <MaterialList list={materials} />
+      <MaterialList list={materials}>
+        {#snippet scope()}
+          <div class="scope">
+            <SegmentedControl
+              label={i18n.t('materials.scope.label')}
+              value={viewer.materialScope}
+              options={scopeOptions}
+              onchange={setScope}
+            />
+            {#if scopeRange}
+              <span class="range">
+                {scopeRange.min === scopeRange.max
+                  ? i18n.t('materials.scope.oneLayer', { n: scopeRange.min + 1 })
+                  : i18n.t('materials.scope.layers', {
+                      from: scopeRange.min + 1,
+                      to: scopeRange.max + 1,
+                    })}
+              </span>
+            {/if}
+          </div>
+        {/snippet}
+      </MaterialList>
     </aside>
   {/if}
 </div>
@@ -65,6 +116,18 @@
 
   .screen.panel-open {
     grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+  }
+
+  .scope {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .range {
+    font-size: var(--text-sm);
+    color: var(--color-text-2);
   }
 
   .stage {

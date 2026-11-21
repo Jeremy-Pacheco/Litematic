@@ -122,6 +122,14 @@ export const en: Messages = {
       'The structure is from a newer version (DataVersion {dataVersion}) than the loaded assets ({version}, DataVersion {assetsDataVersion}): some blocks may have no name or texture.',
   },
   materials: {
+    scope: {
+      label: 'Materials of',
+      all: 'All',
+      layer: 'Current layer',
+      visible: 'Visible layers',
+      oneLayer: 'Layer {n}',
+      layers: 'Layers {from}–{to}',
+    },
     title: 'Materials',
     totals: '{items} items · {types} types',
     progress: '{done} of {total} gathered',

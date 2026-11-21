@@ -129,6 +129,14 @@ export const es = {
       'La estructura es de una versión más nueva (DataVersion {dataVersion}) que los recursos cargados ({version}, DataVersion {assetsDataVersion}): algunos bloques pueden no tener nombre ni textura.',
   },
   materials: {
+    scope: {
+      label: 'Materiales de',
+      all: 'Toda',
+      layer: 'Capa actual',
+      visible: 'Capas visibles',
+      oneLayer: 'Capa {n}',
+      layers: 'Capas {from}–{to}',
+    },
     title: 'Materiales',
     totals: '{items} ítems · {types} tipos',
     progress: '{done} de {total} conseguidos',
