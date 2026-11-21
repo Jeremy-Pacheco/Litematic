@@ -99,8 +99,8 @@ const NOT_SOLID = new Set([
   'redstone_wire',
   'tripwire',
   'tripwire_hook',
-  'sign',
-  'wall_sign',
+  'oak_sign',
+  'oak_wall_sign',
   'chest',
   'trapped_chest',
   'ender_chest',
@@ -113,7 +113,7 @@ const NOT_SOLID = new Set([
   'carrots',
   'potatoes',
   'beetroots',
-  'grass',
+  'short_grass',
   'fern',
   'dead_bush',
   'tall_grass',
@@ -129,7 +129,7 @@ const NOT_SOLID = new Set([
   'azure_bluet',
   'oxeye_daisy',
   'farmland',
-  'grass_path',
+  'dirt_path',
   'soul_sand',
   'structure_void',
 ])
@@ -148,7 +148,7 @@ const NOT_CONDUCTOR =
 const SIGNAL_SOURCES =
   /^(lever|redstone_torch|redstone_wall_torch|redstone_block|daylight_detector|tripwire_hook|detector_rail|trapped_chest|comparator)$|(_button|_pressure_plate)$/
 /** Blocks that raise the post of a wall below them (tag `wall_post_override`). */
-const WALL_POST_OVERRIDE = /^(torch|redstone_torch|sign|wall_sign)$|(_banner|_pressure_plate)$/
+const WALL_POST_OVERRIDE = /^(torch|redstone_torch)$|(_sign|_banner|_pressure_plate)$/
 
 const INSTRUMENTS = [
   'harp',

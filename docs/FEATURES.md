@@ -20,6 +20,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | 12  | `feature/texture-packs`            | Resource packs personalizados                                              | ✅     |
 | 13  | `feature/performance-optimization` | Optimización y mediciones de conjunto                                      | ✅     |
 | 14  | `feature/legacy-schematic-states`  | `.schematic`: estados de vecinos y de block entities                       | ✅     |
+| —   | `fix/legacy-block-renames`         | `.schematic`: nombres de bloque renombrados después de la 1.13             | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

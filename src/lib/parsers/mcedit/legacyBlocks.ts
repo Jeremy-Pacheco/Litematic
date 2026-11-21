@@ -14,12 +14,29 @@ export interface LegacyBlockTable {
   resolve(id: number, meta: number): BlockState | null
 }
 
+/**
+ * The table gives 1.13 ids. These were renamed later, and the current game
+ * resources only have the new names. `stone_slab` is a change of meaning:
+ * in 1.13 it was the smooth stone slab; since 1.14 that is
+ * `smooth_stone_slab`, and `stone_slab` is a plain stone slab.
+ */
+export const LEGACY_RENAMES: Readonly<Record<string, string>> = {
+  'minecraft:sign': 'minecraft:oak_sign', // 1.14
+  'minecraft:wall_sign': 'minecraft:oak_wall_sign', // 1.14
+  'minecraft:stone_slab': 'minecraft:smooth_stone_slab', // 1.14
+  'minecraft:grass_path': 'minecraft:dirt_path', // 1.17
+  'minecraft:grass': 'minecraft:short_grass', // 1.20.3
+}
+
 export function createLegacyTable(blocks: Readonly<Record<string, string>>): LegacyBlockTable {
   const cache = new Map<number, BlockState | null>()
 
   const lookup = (id: number, meta: number): BlockState | null => {
     const text = blocks[`${id}:${meta}`]
-    return text === undefined ? null : parseBlockStateString(text)
+    const state = text === undefined ? null : parseBlockStateString(text)
+    const renamed =
+      state && Object.hasOwn(LEGACY_RENAMES, state.name) ? LEGACY_RENAMES[state.name] : undefined
+    return state && renamed ? { name: renamed, properties: state.properties } : state
   }
 
   return {
