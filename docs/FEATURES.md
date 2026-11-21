@@ -6,7 +6,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | --- | ---------------------------------- | -------------------------------------------------------------------------- | ------ |
 | —   | `chore/line-endings`               | Finales de línea LF (`.gitattributes`)                                     | ✅     |
 | 0   | `chore/project-setup`              | Base técnica: TS estricto, Vitest, ESLint, Prettier, carpetas, docs        | ✅     |
-| 1   | `feature/app-shell`                | Layout, identidad visual, temas (oscuro/claro/automático), idiomas (es/en) | ⏳     |
+| 1   | `feature/app-shell`                | Layout, identidad visual, temas (oscuro/claro/automático), idiomas (es/en) | ✅     |
 | 2   | `feature/nbt-reader`               | Lectura NBT en un Web Worker con validación y progreso                     | ⏳     |
 | 3   | `feature/litematic-parser`         | Formato `.litematic`                                                       | ⏳     |
 | 4   | `feature/schem-parser`             | Formato `.schem` (Sponge v1/v2/v3)                                         | ⏳     |

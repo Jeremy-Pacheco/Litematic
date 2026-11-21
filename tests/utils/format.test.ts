@@ -18,6 +18,15 @@ describe('formatBytes', () => {
     expect(formatBytes(2048 * 1024 ** 4)).toBe('2048 TB')
   })
 
+  it('uses the decimal separator of the locale', () => {
+    expect(formatBytes(1536, 1, 'es')).toBe('1,5 KB')
+    expect(formatBytes(1536, 1, 'en')).toBe('1.5 KB')
+  })
+
+  it('never adds thousands separators', () => {
+    expect(formatBytes(2048 * 1024 ** 4, 1, 'es')).toBe('2048 TB')
+  })
+
   it('rejects invalid input', () => {
     expect(() => formatBytes(-1)).toThrow(RangeError)
     expect(() => formatBytes(Number.NaN)).toThrow(RangeError)

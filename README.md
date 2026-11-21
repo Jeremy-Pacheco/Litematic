@@ -2,10 +2,10 @@
 
 Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Litematica.
 
-> **Estado:** en desarrollo temprano. Por ahora solo existe la base técnica del proyecto
-> (herramientas, estructura de carpetas y documentación). Ninguna funcionalidad de usuario
-> está implementada todavía. Consulta [docs/FEATURES.md](docs/FEATURES.md) para ver el estado
-> de cada funcionalidad.
+> **Estado:** en desarrollo temprano. Ya existe la interfaz base (temas oscuro, claro y
+> automático; español e inglés; pantalla de importación), pero **todavía no lee ni muestra
+> estructuras**. Consulta [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada
+> funcionalidad.
 
 ## Objetivo
 
