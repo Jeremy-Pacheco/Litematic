@@ -216,6 +216,10 @@ export const en: Messages = {
         message:
           '{name} does not contain the game assets. If it is the server jar, use the client one (versions folder).',
       },
+      'not-resource-pack': {
+        title: 'Not a resource pack',
+        message: '{name} has no pack.mcmeta. Check that it is a Minecraft Java resource pack.',
+      },
       'storage-failed': {
         title: 'The assets could not be saved',
         message: 'The browser does not allow storing data (private mode or blocked storage).',
@@ -313,6 +317,38 @@ export const en: Messages = {
     blockEntity: 'Block data',
     more: '… and {count} more',
     hiddenLayer: 'Its layer is hidden.',
+  },
+  pack: {
+    title: 'Resource pack',
+    intro:
+      'Import a resource pack (.zip) to see the structure with its textures and models. Anything the pack lacks comes from your Minecraft assets.',
+    needAssets: 'Load the Minecraft assets first: the pack is applied on top of them.',
+    select: 'Import resource pack',
+    replace: 'Change pack',
+    remove: 'Remove pack',
+    icon: 'Pack icon',
+    format: 'Format',
+    compatibility: 'Compatibility',
+    compatible: 'Made for this version',
+    otherVersion: 'Made for another version (formats {min}–{max}; your assets use {game})',
+    unknown: 'Unknown',
+    files: 'Files used',
+    overlays: 'Overlays applied',
+    rejected: 'Ignored textures',
+    rejectedValue: '{count}: too large or invalid (the game ones are used)',
+    noFiles: 'This pack changes no blocks: it has no textures, models or block states.',
+    readyTitle: 'Resource pack loaded',
+    ready: '{name}: the 3D view uses its textures.',
+    otherVersionTitle: 'Pack for another version',
+    otherVersionMessage:
+      '{name} was made for another Minecraft version. Some textures may not match.',
+    removedTitle: 'Resource pack removed: the game textures are used',
+    reducedTitle: 'Textures reduced',
+    reduced:
+      'The pack textures do not fit at full resolution in a single GPU texture and are shown at 1/{scale}.',
+    indicator: 'Pack: {name}',
+    notZipTitle: 'Not a .zip file',
+    notZip: '{name} is not a ZIP file.',
   },
   toast: {
     region: 'Notifications',

@@ -6,6 +6,7 @@
   import Button from '../controls/Button.svelte'
   import Icon from '../controls/Icon.svelte'
   import FilePickerButton from '../import/FilePickerButton.svelte'
+  import ResourcePackSection from './ResourcePackSection.svelte'
 
   let dialog: HTMLDialogElement | undefined = $state()
 
@@ -104,6 +105,8 @@
         <FilePickerButton label={i18n.t('assets.select')} accept=".jar" onfiles={onFiles} />
       </div>
     {/if}
+
+    <ResourcePackSection />
 
     <section class="where">
       <h3>{i18n.t('assets.whereTitle')}</h3>

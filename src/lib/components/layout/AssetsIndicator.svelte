@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
   import { assets } from '../../stores/assets.svelte'
+  import { resourcePack } from '../../stores/resourcePack.svelte'
 
   const status = $derived(assets.status)
   const label = $derived(
@@ -22,6 +23,9 @@
   >
     <span class="dot" aria-hidden="true"></span>
     <span class="label">{label}</span>
+    {#if resourcePack.active && status.kind === 'ready'}
+      <span class="pack">{i18n.t('pack.indicator', { name: resourcePack.active.name })}</span>
+    {/if}
   </button>
 {/if}
 
@@ -45,6 +49,21 @@
   .indicator:hover {
     background: var(--color-panel-hover);
     color: var(--color-text);
+  }
+
+  .pack {
+    max-width: 14em;
+    overflow: hidden;
+    padding-left: var(--space-2);
+    border-left: 1px solid var(--color-border);
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+
+  @media (max-width: 720px) {
+    .pack {
+      display: none;
+    }
   }
 
   .dot {
