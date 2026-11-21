@@ -44,6 +44,8 @@ describe.skipIf(!fs.existsSync(FILE))('real file: STONE-TOWER', () => {
       legacyBlockNames: false,
       overlappingBlocks: 0,
       skippedObjects: 0,
+      unknownLegacyBlocks: 0,
+      approximateLegacyStates: false,
     })
   })
 })

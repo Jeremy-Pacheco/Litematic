@@ -62,6 +62,13 @@ export interface StructureWarnings {
   overlappingBlocks: number
   /** Block entities or entities skipped because they had no usable position. */
   skippedObjects: number
+  /** Pre-1.13 numeric ids with no known modern equivalent; read as air. */
+  unknownLegacyBlocks: number
+  /**
+   * Converted from numeric ids: states that Minecraft computed from neighbors
+   * (fence connections, stair shapes, door halves…) use default values.
+   */
+  approximateLegacyStates: boolean
 }
 
 export interface Structure {
