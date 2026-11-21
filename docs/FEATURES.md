@@ -19,7 +19,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | 11  | `feature/block-inspector`          | Selección e inspección de bloques                                          | ✅     |
 | 12  | `feature/texture-packs`            | Resource packs personalizados                                              | ✅     |
 | 13  | `feature/performance-optimization` | Optimización y mediciones de conjunto                                      | ✅     |
-| 14  | `feature/legacy-schematic-states`  | `.schematic`: estados de vecinos y de block entities                       | 🚧     |
+| 14  | `feature/legacy-schematic-states`  | `.schematic`: estados de vecinos y de block entities                       | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

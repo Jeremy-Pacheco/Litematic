@@ -292,6 +292,13 @@ de WorldEdit (IDs de más de 255 con `AddBlocks` y `Add`, metadatos, block entit
 en el navegador, con una casa de 7 × 5 × 7 (suelo, paredes, tejado, cristal, puerta, valla,
 escaleras y cofre): 173 bloques y 9 estados, como se esperaba.
 
+Los estados de vecinos y de block entities se probaron con tests por regla y con un `.schematic`
+generado con todos los casos (24 × 5 × 12), cuyos 46 estados resultantes se pasaron por los
+modelos reales del `client.jar` 26.3: ninguno queda sin modelo y la geometría cambia como debe
+(un muro con los valores de la tabla, `east=false`…, no tiene ninguna cara en los modelos
+actuales; corregido tiene 10–16; una valla pasa de 6 caras, solo el poste, a 26). No se comprobó
+a ojo en el navegador.
+
 ## Flujo de lectura
 
 ```text
