@@ -37,9 +37,6 @@ export const en: Messages = {
     mismatchTitle: 'Extension does not match',
     mismatch:
       '{name} has the {extension} extension, but its content is {format}. The content is used.',
-    blocksPending:
-      'Blocks of this format are not interpreted yet: it arrives in upcoming versions.',
-    viewerPending: 'Blocks read successfully. The 3D view arrives in upcoming versions.',
     errors: {
       'unrecognized-data': {
         title: 'Not a structure file',
@@ -232,6 +229,42 @@ export const en: Messages = {
         message: 'Stopped reading {name}.',
       },
     },
+  },
+  viewer: {
+    toolbar: 'Viewer controls',
+    fit: 'Fit',
+    views: 'Views',
+    view: {
+      iso: 'Iso',
+      top: 'Top',
+      front: 'Front',
+      side: 'Side',
+    },
+    helpers: 'Visual helpers',
+    grid: 'Grid',
+    box: 'Box',
+    background: 'Background',
+    backgrounds: {
+      theme: 'Theme',
+      dark: 'Dark',
+      light: 'Light',
+      sky: 'Sky',
+    },
+    panel: 'Panel',
+    blocks: '{count} blocks',
+    phase: {
+      models: 'Preparing models…',
+      meshing: 'Building geometry…',
+    },
+    stats: '{sections} sections · {triangles} triangles · {time} ms',
+    needAssets:
+      'To see the structure in 3D, load the assets of your Minecraft (client.jar). It is only needed once.',
+    error: 'The structure could not be shown in 3D.',
+    errorTitle: 'Viewer error',
+    retry: 'Retry',
+    missingTitle: 'Blocks without a model',
+    missing:
+      '{count} block types have no model in the loaded assets and are shown with the missing texture.',
   },
   toast: {
     region: 'Notifications',

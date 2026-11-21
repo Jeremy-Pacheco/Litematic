@@ -1,121 +1,34 @@
 <script lang="ts">
-  import { STRUCTURE_ACCEPT, STRUCTURE_EXTENSIONS } from '../../constants/formats'
+  import { STRUCTURE_ACCEPT } from '../../constants/formats'
   import { i18n } from '../../i18n/i18n.svelte'
-  import { DEFAULT_MAX_DECOMPRESSED_BYTES } from '../../parsers/nbt/decompress'
-  import { MAX_STRUCTURE_VOLUME } from '../../parsers/structureBuilder'
-  import { buildMaterialList } from '../../materials/materialList'
+  import { openStructureFiles } from '../../import/openStructureFiles'
   import { assets } from '../../stores/assets.svelte'
   import { importState } from '../../stores/importState.svelte'
-  import { materialProgress, materialsStorageKey } from '../../stores/materials.svelte'
-  import MaterialList from '../materials/MaterialList.svelte'
-  import { toasts } from '../../stores/toasts.svelte'
-  import { formatBytes, formatCount } from '../../utils/format'
-  import { checkStructureFile } from '../../utils/structureFile'
   import DropZone from './DropZone.svelte'
   import ReadingProgress from './ReadingProgress.svelte'
-  import StructureSummary from './StructureSummary.svelte'
   import WindowDropTarget from './WindowDropTarget.svelte'
 
+  /**
+   * Shown while no structure is open or one is being read. Once a structure
+   * is ready the app switches to the 3D viewer.
+   */
   let dragging = $state(false)
 
   const status = $derived(importState.status)
   const current = $derived(importState.current)
-  const materials = $derived(
-    status.kind === 'ready' && status.structure ? buildMaterialList(status.structure) : null,
-  )
-
-  async function handleFiles(files: File[]): Promise<void> {
-    if (files.length !== 1) {
-      toasts.push({
-        kind: 'error',
-        title: { key: 'import.multipleTitle' },
-        message: { key: 'import.multiple' },
-      })
-      return
-    }
-
-    const [file] = files
-    const name = file.name
-    const check = checkStructureFile(file)
-
-    if (!check.ok) {
-      const prefix = check.reason === 'empty' ? 'import.empty' : 'import.unsupported'
-      toasts.push({
-        kind: 'error',
-        title: { key: `${prefix}Title` },
-        message: { key: prefix, params: { name } },
-      })
-      return
-    }
-
-    const outcome = await importState.load(file, check.format)
-
-    if (outcome.kind === 'superseded') return
-
-    if (outcome.kind === 'error') {
-      const params = {
-        name,
-        limit: formatBytes(DEFAULT_MAX_DECOMPRESSED_BYTES, 0, i18n.locale),
-        maxBlocks: formatCount(MAX_STRUCTURE_VOLUME, i18n.locale),
-        detail: outcome.message,
-      }
-      toasts.push({
-        kind: outcome.code === 'cancelled' ? 'info' : 'error',
-        title: { key: `import.errors.${outcome.code}.title` },
-        message: { key: `import.errors.${outcome.code}.message`, params },
-      })
-      return
-    }
-
-    const { info } = outcome
-    // Restore the quantities the user entered for this file in a past visit.
-    materialProgress.open(materialsStorageKey(file))
-    if (info.format !== check.format) {
-      toasts.push({
-        kind: 'info',
-        title: { key: 'import.mismatchTitle' },
-        message: {
-          key: 'import.mismatch',
-          params: {
-            name,
-            extension: STRUCTURE_EXTENSIONS[check.format],
-            format: i18n.t(`format.${info.format}`),
-          },
-        },
-      })
-    }
-    toasts.push({
-      kind: 'success',
-      title: { key: 'import.readyTitle' },
-      message: { key: 'import.ready', params: { name, time: info.durationMs } },
-    })
-  }
 </script>
 
-<WindowDropTarget bind:dragging onfiles={handleFiles} />
+<WindowDropTarget bind:dragging onfiles={openStructureFiles} />
 
-<div class="screen" class:wide={materials !== null && status.kind === 'ready' && !dragging}>
+<div class="screen">
   {#if status.kind === 'reading' && current}
     <ReadingProgress
       fileName={current.file.name}
       progress={status.progress}
       oncancel={() => importState.cancel()}
     />
-  {:else if status.kind === 'ready' && current && !dragging}
-    <div class="result">
-      <StructureSummary
-        fileName={current.file.name}
-        info={status.info}
-        structure={status.structure}
-        accept={STRUCTURE_ACCEPT}
-        onfiles={handleFiles}
-      />
-      {#if materials}
-        <MaterialList list={materials} />
-      {/if}
-    </div>
   {:else}
-    <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={handleFiles} />
+    <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={openStructureFiles} />
     {#if assets.status.kind === 'none'}
       <p class="assets-hint">
         {i18n.t('assets.hint')}
@@ -145,30 +58,6 @@
       linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
     background-size: var(--grid-size) var(--grid-size);
     background-position: center;
-  }
-
-  .screen.wide {
-    grid-template-columns: minmax(0, 1240px);
-    place-content: start center;
-  }
-
-  /* Summary and materials side by side; stacked on narrow screens. */
-  .result {
-    display: grid;
-    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-4);
-    width: 100%;
-  }
-
-  .result > :global(*) {
-    width: 100%;
-  }
-
-  @media (max-width: 1000px) {
-    .result {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
 
   .assets-hint {

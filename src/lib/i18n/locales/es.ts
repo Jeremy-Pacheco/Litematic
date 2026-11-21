@@ -40,9 +40,6 @@ export const es = {
     mismatchTitle: 'La extensión no coincide',
     mismatch:
       '{name} tiene extensión {extension}, pero su contenido es {format}. Se usa el contenido.',
-    blocksPending:
-      'Los bloques de este formato todavía no se interpretan: llegará en las próximas versiones.',
-    viewerPending: 'Bloques leídos correctamente. La vista 3D llegará en las próximas versiones.',
     errors: {
       'unrecognized-data': {
         title: 'No es un archivo de estructura',
@@ -241,6 +238,42 @@ export const es = {
         message: 'Se ha dejado de leer {name}.',
       },
     },
+  },
+  viewer: {
+    toolbar: 'Controles del visor',
+    fit: 'Ajustar',
+    views: 'Vistas',
+    view: {
+      iso: 'Iso',
+      top: 'Arriba',
+      front: 'Frente',
+      side: 'Lado',
+    },
+    helpers: 'Ayudas visuales',
+    grid: 'Cuadrícula',
+    box: 'Caja',
+    background: 'Fondo',
+    backgrounds: {
+      theme: 'Tema',
+      dark: 'Oscuro',
+      light: 'Claro',
+      sky: 'Cielo',
+    },
+    panel: 'Panel',
+    blocks: '{count} bloques',
+    phase: {
+      models: 'Preparando modelos…',
+      meshing: 'Construyendo geometría…',
+    },
+    stats: '{sections} secciones · {triangles} triángulos · {time} ms',
+    needAssets:
+      'Para ver la estructura en 3D, carga los recursos de tu Minecraft (client.jar). Solo hace falta una vez.',
+    error: 'No se ha podido mostrar la estructura en 3D.',
+    errorTitle: 'Error en el visor',
+    retry: 'Reintentar',
+    missingTitle: 'Bloques sin modelo',
+    missing:
+      '{count} tipos de bloque no tienen modelo en los recursos cargados y se muestran con la textura de «falta textura».',
   },
   toast: {
     region: 'Notificaciones',
