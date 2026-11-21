@@ -1,7 +1,7 @@
 # Formatos NBT
 
-> **Estado:** lectura de NBT, detección del formato y parsers de **Litematica** y **Sponge**
-> implementados. El parser de MCEdit (`.schematic`) está **pendiente**.
+> **Estado:** lectura de NBT, detección del formato y parsers de los tres formatos
+> (**Litematica**, **Sponge** y **MCEdit**) implementados.
 
 ## Formatos soportados
 
@@ -10,7 +10,7 @@
 | Litematica                            | `.litematic` | `Version`, `Metadata` y `Regions` en la raíz       | ✅ `feature/litematic-parser`        |
 | Sponge Schematic v3                   | `.schem`     | Compuesto `Schematic` con `Version` = 3 y `Blocks` | ✅ `feature/schem-parser`            |
 | Sponge Schematic v1 / v2              | `.schem`     | `Version`, `Palette` y `BlockData` en la raíz      | ✅ `feature/schem-parser`            |
-| MCEdit / Schematica (anterior a 1.13) | `.schematic` | `Blocks` y `Data` (ByteArray) y `Materials`        | ⏳ `feature/legacy-schematic-parser` |
+| MCEdit / Schematica (anterior a 1.13) | `.schematic` | `Blocks` y `Data` (ByteArray) y `Materials`        | ✅ `feature/legacy-schematic-parser` |
 
 La extensión del archivo **no se usa para decidir**: solo sirve para filtrar el selector de
 archivos y para avisar si no coincide con el contenido.
@@ -31,17 +31,17 @@ Datos que ya se extraen sin interpretar los bloques:
 
 Todos los parsers producen el mismo tipo (`types/structure.ts`):
 
-| Campo           | Contenido                                                                                                |
-| --------------- | -------------------------------------------------------------------------------------------------------- |
-| `size`          | Caja que envuelve toda la estructura                                                                     |
-| `palette`       | Paleta global sin duplicados (`BlockState`: `name` + `properties`). Índice 0 = aire                      |
-| `blocks`        | Índice de paleta por posición, orden Y-Z-X: `(y · size.z + z) · size.x + x`                              |
-| `nonAirBlocks`  | Posiciones que no son aire                                                                               |
-| `blockEntities` | Posición, `id` y NBT completo (copiado, sin referencias al archivo descomprimido)                        |
-| `entities`      | Posición fraccionaria, `id` y NBT                                                                        |
-| `regions`       | Subregiones con nombre (Litematica); el resto de formatos tiene una sola, sin nombre                     |
-| `metadata`      | Nombre, autor, descripción, fechas                                                                       |
-| `warnings`      | Problemas no fatales: índices inexistentes, nombres anteriores a 1.13, solapamientos, entidades omitidas |
+| Campo           | Contenido                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `size`          | Caja que envuelve toda la estructura                                                                                                                     |
+| `palette`       | Paleta global sin duplicados (`BlockState`: `name` + `properties`). Índice 0 = aire                                                                      |
+| `blocks`        | Índice de paleta por posición, orden Y-Z-X: `(y · size.z + z) · size.x + x`                                                                              |
+| `nonAirBlocks`  | Posiciones que no son aire                                                                                                                               |
+| `blockEntities` | Posición, `id` y NBT completo (copiado, sin referencias al archivo descomprimido)                                                                        |
+| `entities`      | Posición fraccionaria, `id` y NBT                                                                                                                        |
+| `regions`       | Subregiones con nombre (Litematica); el resto de formatos tiene una sola, sin nombre                                                                     |
+| `metadata`      | Nombre, autor, descripción, fechas                                                                                                                       |
+| `warnings`      | Problemas no fatales: índices inexistentes, nombres anteriores a 1.13, solapamientos, entidades omitidas, IDs antiguos desconocidos, estados aproximados |
 
 - `blocks` es un `Uint16Array` (2 bytes por bloque) salvo que la paleta supere 65 536 estados.
 - `minecraft:cave_air` y `minecraft:void_air` se tratan como aire (índice 0).
@@ -97,8 +97,9 @@ raíz
 | 5–7     | Ticks de fluidos; versión actual 7 (`SubVersion` 1)                 | Sí                                        |
 
 - Archivos con versión < 5 o `MinecraftDataVersion` < 1631 usan **nombres de bloque anteriores a
-  la 1.13**. Se leen y se marcan con un aviso; la conversión llegará con la tabla de
-  `feature/legacy-schematic-parser`.
+  la 1.13**. Se leen y se marcan con un aviso. La tabla de IDs numéricos del parser MCEdit no
+  sirve aquí, porque estos archivos guardan nombres de la 1.12, no números: su conversión queda
+  pendiente.
 - Los ticks pendientes no se usan (no afectan a lo que se construye).
 
 ### Validación
@@ -177,6 +178,68 @@ Un `.schem` real de WorldEdit 7.4.6 (Sponge v3, `DataVersion` 5023, 12 × 14 × 
 block entities, 6 entidades) da **711 bloques** que no son aire, la misma cifra que una
 decodificación independiente hecha con un script aparte sobre el NBT leído por Deepslate. El
 archivo no se incluye en el repositorio (`tests/fixtures/local/`).
+
+## MCEdit / Schematica (`.schematic`)
+
+Formato anterior a la 1.13, con **IDs numéricos**. Referencia: `MCEditSchematicReader` de
+WorldEdit.
+
+```text
+raíz
+├─ Width, Height, Length   short (sin signo)
+├─ Materials               "Alpha" (Java Edition; "Classic" y "Pocket" se rechazan)
+├─ Blocks                  ByteArray: 8 bits bajos del ID
+├─ AddBlocks (opcional)    4 bits altos del ID, dos bloques por byte
+├─ Add (opcional)          4 bits altos del ID, un byte por bloque (Schematica antiguo)
+├─ Data                    ByteArray: metadatos (0–15)
+├─ TileEntities            x, y, z relativos a la estructura
+└─ Entities                Pos relativo
+```
+
+- **Orden**: `y · W · L + z · W + x`, igual que `Structure`.
+- **`AddBlocks`**: en índices pares se usan los 4 bits bajos del byte `índice / 2`; en impares,
+  los 4 bits altos. ID completo = `(alto << 8) | Blocks`.
+- **No hay metadatos** (nombre, autor) ni `DataVersion`.
+
+### Traducción de IDs numéricos
+
+Cada `id:meta` se traduce a un blockstate moderno con la tabla `src/lib/data/legacyBlocks.json`:
+
+- **Origen**: `data/pc/common/legacy.json` de
+  [PrismarineJS/minecraft-data](https://github.com/PrismarineJS/minecraft-data), commit
+  `11fed0c`, licencia MIT (declarada en su README; aviso completo en
+  `src/lib/data/LICENSE-minecraft-data.txt`). Se descartaron las tablas de WorldEdit (GPL) y
+  las de Minecraft (propiedad de Mojang).
+- **1682 entradas**, todas comprobadas por un test con `parseBlockStateString`.
+- Se regenera con `node scripts/update-legacy-blocks.mjs`, fijado a ese commit.
+- Búsqueda: `id:meta` → si no existe, `id:0` (variante por defecto) → si tampoco, aire y aviso
+  `unknownLegacyBlocks`.
+- Cada combinación `id:meta` se resuelve **una sola vez**; después se usa una tabla de 65 536
+  enteros, así que el coste por bloque es constante.
+- La tabla se carga **bajo demanda** con `import()` dentro del worker: es un fragmento aparte
+  (99 kB, 12,3 kB con gzip) que solo se descarga al abrir un `.schematic`.
+
+### Limitaciones
+
+- **Estados que dependen de los vecinos**: antes de la 1.13 Minecraft no guardaba la forma de las
+  escaleras, las conexiones de vallas/paneles/muros, el redstone, la mitad superior de las puertas,
+  etc.; los calculaba al vuelo. La tabla da un valor por defecto y la app lo indica siempre con el
+  aviso `approximateLegacyStates`. Recalcularlos a partir de los vecinos es una mejora pendiente.
+- **Bloques que dependen de su block entity** (color de camas y estandartes, tipo de calavera,
+  planta de una maceta): se muestran con el valor por defecto de la tabla. WorldEdit los corrige
+  leyendo el block entity; queda como mejora pendiente.
+- **IDs de mods** (`SchematicaMapping`) no están en la tabla: se leen como aire con aviso.
+- El NBT de los block entities se conserva en su formato antiguo, sin convertir.
+- La tabla traduce IDs **numéricos**. Los `.litematic` y Sponge v1 anteriores a la 1.13 guardan
+  **nombres de la 1.12** (`minecraft:stone[variant=granite]`), que esta tabla no cubre; siguen
+  mostrando el aviso `legacyBlockNames`.
+
+### Verificación
+
+No se ha dispuesto de un `.schematic` real. Se ha probado con archivos generados según el lector
+de WorldEdit (IDs de más de 255 con `AddBlocks` y `Add`, metadatos, block entities, entidades) y,
+en el navegador, con una casa de 7 × 5 × 7 (suelo, paredes, tejado, cristal, puerta, valla,
+escaleras y cofre): 173 bloques y 9 estados, como se esperaba.
 
 ## Flujo de lectura
 

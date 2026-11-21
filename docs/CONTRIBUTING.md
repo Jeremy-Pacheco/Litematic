@@ -53,6 +53,12 @@ probarlos, cópialos en `tests/fixtures/local/`, que está en `.gitignore`. Los 
 se saltan automáticamente si el archivo no existe. Para casos generados, usa los helpers de
 `tests/helpers/` (`encodeNbt`, `litematicRoot`, `region`…).
 
+## Datos generados
+
+`src/lib/data/legacyBlocks.json` se genera con `node scripts/update-legacy-blocks.mjs` a partir de
+un commit fijo de PrismarineJS/minecraft-data (MIT). No se edita a mano y Prettier lo ignora. Si
+se incorporan datos de terceros, su licencia va junto a ellos en `src/lib/data/`.
+
 ## Dependencias
 
 Se usa **pnpm**. No se añaden dependencias sin aprobarlo previamente.

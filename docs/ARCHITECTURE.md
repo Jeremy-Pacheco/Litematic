@@ -14,6 +14,7 @@ src/
 │   │   ├── materials/   Lista de materiales (pendiente)
 │   │   ├── layers/      Selector de capas (pendiente)
 │   │   └── dialogs/     Ventanas modales (pendiente)
+│   ├── data/            Datos generados (tabla de IDs antiguos) y sus licencias
 │   ├── i18n/            Idiomas: diccionarios y traducción
 │   ├── styles/          Variables de diseño (tokens.css)
 │   ├── stores/          Estado global reactivo (runas de Svelte 5)
@@ -28,6 +29,7 @@ src/
 ├── app.css              Estilos base globales
 └── main.ts              Punto de entrada: carga preferencias y monta la app
 tests/                   Tests de Vitest, con la misma estructura que src/
+scripts/                 Scripts de mantenimiento (regenerar datos), se ejecutan con Node
 docs/                    Documentación
 ```
 
@@ -52,6 +54,9 @@ docs/                    Documentación
 | `parsers/sponge/varint.ts`             | Lector secuencial de varints sin copia                                                    |
 | `parsers/sponge/SpongeParser.ts`       | `.schem` v1/v2/v3 → `Structure`                                                           |
 | `utils/structureTitle.ts`              | Título visible: nombre de la estructura o, si es genérico, nombre del archivo             |
+| `parsers/mcedit/McEditParser.ts`       | `.schematic` (IDs numéricos anteriores a 1.13) → `Structure`                              |
+| `parsers/mcedit/legacyBlocks.ts`       | Tabla `id:meta` → blockstate moderno, con caché y carga bajo demanda                      |
+| `data/legacyBlocks.json`               | Tabla generada desde minecraft-data (MIT); aviso en `data/LICENSE-minecraft-data.txt`     |
 | `parsers/nbt/decompress.ts`            | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
 | `parsers/nbt/NbtReader.ts`             | Lector NBT binario con validación de longitudes y profundidad                             |
 | `parsers/nbt/modifiedUtf8.ts`          | Decodificación de cadenas en UTF-8 modificado de Java                                     |
@@ -140,8 +145,8 @@ StructureSummary (formato, dimensiones, bloques, paleta, regiones, avisos…) + 
 6. Los errores llegan con un código (`too-large`, `invalid-nbt`…) que se traduce a una
    notificación. Ver [NBT-FORMATS.md](NBT-FORMATS.md).
 
-Parsers disponibles: Litematica y Sponge. Para `.schematic` se muestra el resumen del archivo y
-se indica que sus bloques aún no se interpretan.
+Los tres formatos tienen parser. El de MCEdit es asíncrono: carga bajo demanda la tabla de IDs
+antiguos (`data/legacyBlocks.json`), que es un fragmento aparte del build.
 
 ## Principios
 

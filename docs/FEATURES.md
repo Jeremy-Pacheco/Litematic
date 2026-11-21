@@ -10,7 +10,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | 2   | `feature/nbt-reader`               | Lectura NBT en un Web Worker con validación y progreso                     | ✅     |
 | 3   | `feature/litematic-parser`         | Formato `.litematic`                                                       | ✅     |
 | 4   | `feature/schem-parser`             | Formato `.schem` (Sponge v1/v2/v3)                                         | ✅     |
-| 5   | `feature/legacy-schematic-parser`  | Formato `.schematic` (MCEdit, IDs numéricos)                               | ⏳     |
+| 5   | `feature/legacy-schematic-parser`  | Formato `.schematic` (MCEdit, IDs numéricos)                               | ✅     |
 | 6   | `feature/material-list`            | Lista de materiales                                                        | ⏳     |
 | 7   | `feature/minecraft-assets`         | Carga de recursos desde el `client.jar` del usuario                        | ⏳     |
 | 8   | `feature/block-models`             | Blockstates, modelos y atlas de texturas                                   | ⏳     |
