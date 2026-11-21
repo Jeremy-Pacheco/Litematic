@@ -25,7 +25,11 @@ scope.onmessage = async (event: MessageEvent<ModelsWorkerRequest>) => {
       return
     }
     const pack = await loadPackFiles()
-    const models = await bakeModels(event.data.palette, pack ? overlay(files, pack) : files)
+    const models = await bakeModels(
+      event.data.palette,
+      pack ? overlay(files, pack) : files,
+      event.data.data,
+    )
     const message: ModelsWorkerResponse = { type: 'done', models }
     scope.postMessage(message, bakedTransferables(models))
   } catch (error) {

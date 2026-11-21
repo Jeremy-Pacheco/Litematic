@@ -1,4 +1,5 @@
 import type { BakedModels } from '../models/bakeModels'
+import type { BlockRenderData } from '../models/blockEntityRender'
 import type { BlockState } from '../types/structure'
 import type {
   ModelsErrorCode,
@@ -21,7 +22,10 @@ export class ModelBakeError extends Error {
  * request, terminated afterwards). Used by the 3D viewer.
  */
 export const ModelManager = {
-  bake(palette: readonly BlockState[]): { promise: Promise<BakedModels>; cancel: () => void } {
+  bake(
+    palette: readonly BlockState[],
+    data: readonly (BlockRenderData | null)[] = [],
+  ): { promise: Promise<BakedModels>; cancel: () => void } {
     const worker = new Worker(new URL('../workers/models.worker.ts', import.meta.url), {
       type: 'module',
     })
@@ -43,7 +47,7 @@ export const ModelManager = {
         worker.terminate()
         reject(new ModelBakeError('bake-failed', event.message || 'Worker error'))
       }
-      const request: ModelsWorkerRequest = { type: 'bake', palette: [...palette] }
+      const request: ModelsWorkerRequest = { type: 'bake', palette: [...palette], data: [...data] }
       worker.postMessage(request)
     })
 

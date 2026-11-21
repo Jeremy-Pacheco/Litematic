@@ -8,6 +8,7 @@ import {
   type Material,
 } from 'three'
 import type { BakedModels } from '../models/bakeModels'
+import { buildRenderVariants } from '../models/blockEntityRender'
 import type { Structure } from '../types/structure'
 import type { LayerRange } from '../viewer/layers'
 import { createAtlasTexture, createLayerMaterials, LAYER_RENDER_ORDER } from '../viewer/materials'
@@ -85,7 +86,10 @@ export class StructureManager {
     this.setLayerRange(this.#range)
 
     onProgress?.({ phase: 'models', fraction: 0 })
-    const bake = ModelManager.bake(structure.palette)
+    // Blocks whose data changes their look (banner patterns) get their own
+    // palette entries for drawing; the structure itself is not changed.
+    const variants = buildRenderVariants(structure)
+    const bake = ModelManager.bake(variants.palette, variants.data)
     this.#cancel = bake.cancel
     const models = await bake.promise
 
@@ -93,7 +97,7 @@ export class StructureManager {
     this.#materials = createLayerMaterials(this.#texture, this.#planes)
     this.#capMaterials = createLayerMaterials(this.#texture)
 
-    const stats = await this.#mesh(structure, models, onProgress)
+    const stats = await this.#mesh({ ...structure, blocks: variants.blocks }, models, onProgress)
     this.#updateCaps()
     return {
       stats,

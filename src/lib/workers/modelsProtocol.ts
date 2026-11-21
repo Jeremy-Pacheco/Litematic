@@ -1,7 +1,13 @@
 import type { BakedModels } from '../models/bakeModels'
+import type { BlockRenderData } from '../models/blockEntityRender'
 import type { BlockState } from '../types/structure'
 
-export type ModelsWorkerRequest = { type: 'bake'; palette: BlockState[] }
+export type ModelsWorkerRequest = {
+  type: 'bake'
+  palette: BlockState[]
+  /** Render data per palette index (banner patterns…). */
+  data: (BlockRenderData | null)[]
+}
 
 export type ModelsErrorCode = 'no-assets' | 'bake-failed'
 
