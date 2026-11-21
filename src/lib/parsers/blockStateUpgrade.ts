@@ -18,6 +18,13 @@ import { createBlockState } from './blockState'
 
 const MC = 'minecraft:'
 
+/**
+ * First data version with flattened block ids (snapshot 17w47a, before 1.13
+ * at 1519). Files older than this use 1.12 names such as
+ * `minecraft:stone[variant=granite]`, which this module does not handle.
+ */
+export const DATA_VERSION_FLATTENING = 1451
+
 /** Last data version of 1.13 (1.13.2). `stone_slab` was the smooth stone slab up to here. */
 export const SMOOTH_STONE_SLAB_RENAME = 1631
 

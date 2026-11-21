@@ -196,6 +196,16 @@ describe('parseLitematic', () => {
       parse(litematicRoot(r, { version: 5, dataVersion: 1631 })).warnings.legacyBlockNames,
     ).toBe(false)
   })
+
+  it('takes 17w47a (data version 1451) as the first flattened version, so 1.13.0 is not legacy', () => {
+    const r = { r: region(filled([1, 1, 1], ['minecraft:air'], () => 0)) }
+    const legacyAt = (dataVersion: number) =>
+      parse(litematicRoot(r, { version: 5, dataVersion })).warnings.legacyBlockNames
+    expect(legacyAt(1450)).toBe(true)
+    expect(legacyAt(1451)).toBe(false)
+    expect(legacyAt(1519)).toBe(false) // 1.13
+    expect(legacyAt(1628)).toBe(false) // 1.13.1
+  })
 })
 
 describe('parseLitematic with invalid data', () => {

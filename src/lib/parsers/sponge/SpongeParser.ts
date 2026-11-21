@@ -1,7 +1,7 @@
 import { detachNbt, isNbtCompound, type NbtCompound, type NbtValue } from '../../types/nbt'
 import type { BlockEntity, BlockState, Entity, Structure, Vec3 } from '../../types/structure'
 import { parseBlockStateString } from '../blockStateString'
-import { upgradeBlockState } from '../blockStateUpgrade'
+import { DATA_VERSION_FLATTENING, upgradeBlockState } from '../blockStateUpgrade'
 import { StructureReadError } from '../errors'
 import {
   getByteArray,
@@ -33,8 +33,6 @@ import { VarintReader } from './varint'
  * | 3       | Fields inside `Schematic`; blocks inside `Blocks`; extra data in `Data` |
  */
 
-/** First Minecraft data version after the 1.13 "flattening" of block ids. */
-const DATA_VERSION_FLATTENING = 1631
 /** Palette indices above this are treated as corrupt (avoids huge lookup tables). */
 const MAX_PALETTE_INDEX = 1 << 20
 const PROGRESS_STEP = 1 << 20

@@ -123,6 +123,27 @@ describe('parsers apply the upgrade', () => {
     ])
   })
 
+  it('in a 1.13.0 .schem (data version 1519)', () => {
+    const s = parseSponge(
+      readNbt(
+        encodeNbt(
+          spongeRoot({
+            version: 2,
+            size: [2, 1, 1],
+            palette: { 'minecraft:sign[rotation=0]': 0, 'minecraft:stone_slab[type=bottom]': 1 },
+            blocks: [0, 1],
+            dataVersion: 1519,
+          }),
+        ),
+      ).root,
+    )
+    expect(s.warnings.legacyBlockNames).toBe(false)
+    expect(s.palette.map(blockStateKey).slice(1)).toEqual([
+      'minecraft:oak_sign[rotation=0]',
+      'minecraft:smooth_stone_slab[type=bottom]',
+    ])
+  })
+
   it('not in pre-1.13 files, whose names mean other blocks', () => {
     const s = parseSponge(
       readNbt(

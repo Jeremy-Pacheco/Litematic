@@ -8,7 +8,7 @@ import type {
   Vec3,
 } from '../../types/structure'
 import { createBlockState } from '../blockState'
-import { upgradeBlockState } from '../blockStateUpgrade'
+import { DATA_VERSION_FLATTENING, upgradeBlockState } from '../blockStateUpgrade'
 import { StructureReadError } from '../errors'
 import { getCompound, getInteger, getList, getLongArray, getNumber, getString } from '../nbt/access'
 import {
@@ -27,8 +27,6 @@ import { bitsForPalette, PackedReader, requiredLongs } from './bitArray'
  * `LitematicaBitArray` in Litematica's source.
  */
 
-/** First Minecraft data version after the 1.13 "flattening" of block ids (1.13.2). */
-const DATA_VERSION_FLATTENING = 1631
 /** First Litematica format version written by 1.13+ builds. */
 const FORMAT_VERSION_FLATTENING = 5
 /** Blocks decoded between two progress reports. */
