@@ -22,16 +22,28 @@ export type LoadOutcome =
   /** Replaced by a newer load before finishing; the caller should do nothing. */
   | { kind: 'superseded' }
 
+/** The structure on screen, with the file it came from. */
+export interface ShownStructure {
+  file: File
+  info: StructureFileInfo
+  structure: Structure
+}
+
 /**
  * The structure file the user picked and the state of reading it.
  *
- * Starting a new load cancels the previous one, which terminates its worker
- * and releases the memory it used. The previous structure is dropped as soon
- * as the new load starts, so both never stay in memory together.
+ * Starting a new load cancels the previous read, which terminates its worker
+ * and releases the memory it used. The structure on screen (`shown`) stays
+ * until the new one is ready, so the user never loses the view: if the new
+ * file fails, the previous structure is still there. While a file is read,
+ * both can be in memory for a moment.
  */
 class ImportState {
+  /** File being read or shown (for the top bar). */
   current = $state.raw<SelectedStructureFile | null>(null)
   status = $state.raw<ImportStatus>({ kind: 'idle' })
+  shown = $state.raw<ShownStructure | null>(null)
+  #shownSelection: SelectedStructureFile | null = null
 
   #task: StructureReadTask | null = null
   #generation = 0
@@ -52,12 +64,19 @@ class ImportState {
       const { info, structure } = await task.promise
       if (generation !== this.#generation) return { kind: 'superseded' }
       this.status = { kind: 'ready', info, structure }
+      if (structure) {
+        this.shown = { file, info, structure }
+        this.#shownSelection = this.current
+      }
       return { kind: 'ready', info, structure }
     } catch (error) {
       if (generation !== this.#generation) return { kind: 'superseded' }
       const { code, message } = toStructureReadError(error)
-      this.current = null
-      this.status = { kind: 'error', code, message }
+      // Back to the structure on screen, if there is one.
+      this.current = this.#shownSelection
+      this.status = this.shown
+        ? { kind: 'ready', info: this.shown.info, structure: this.shown.structure }
+        : { kind: 'error', code, message }
       return { kind: 'error', code, message }
     } finally {
       if (this.#task === task) this.#task = null
@@ -74,6 +93,8 @@ class ImportState {
     this.#generation++
     this.current = null
     this.status = { kind: 'idle' }
+    this.shown = null
+    this.#shownSelection = null
   }
 }
 

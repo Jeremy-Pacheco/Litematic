@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { STRUCTURE_ACCEPT } from '../../constants/formats'
   import { i18n } from '../../i18n/i18n.svelte'
+  import { openStructureFiles } from '../../import/openStructureFiles'
   import type { ViewPreset } from '../../managers/CameraManager'
   import { viewer, type ViewerBackground } from '../../stores/viewer.svelte'
   import Icon from '../controls/Icon.svelte'
@@ -14,6 +16,15 @@
   const views: ViewPreset[] = ['iso', 'top', 'front', 'side']
   const backgrounds: ViewerBackground[] = ['theme', 'dark', 'light', 'sky']
 
+  let fileInput: HTMLInputElement | undefined = $state()
+
+  function onFile(): void {
+    if (!fileInput) return
+    const files = Array.from(fileInput.files ?? [])
+    fileInput.value = '' // allow opening the same file again
+    if (files.length > 0) void openStructureFiles(files)
+  }
+
   function toggle(key: 'grid' | 'box' | 'layersOpen' | 'panelOpen'): void {
     viewer[key] = !viewer[key]
     viewer.save()
@@ -21,6 +32,17 @@
 </script>
 
 <div class="toolbar" role="toolbar" aria-label={i18n.t('viewer.toolbar')}>
+  <button
+    type="button"
+    class="tool"
+    title={i18n.t('viewer.open')}
+    onclick={() => fileInput?.click()}
+  >
+    <Icon name="upload" size={15} />
+    <span class="label">{i18n.t('viewer.open')}</span>
+  </button>
+  <input bind:this={fileInput} type="file" accept={STRUCTURE_ACCEPT} hidden onchange={onFile} />
+
   <button type="button" class="tool" onclick={onfit} title={i18n.t('viewer.fit')}>
     <Icon name="fit" size={15} />
     <span class="label">{i18n.t('viewer.fit')}</span>
