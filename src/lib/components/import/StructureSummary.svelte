@@ -3,6 +3,7 @@
   import type { StructureFileInfo } from '../../parsers/readStructureFile'
   import type { Structure } from '../../types/structure'
   import { formatBytes, formatCount } from '../../utils/format'
+  import { structureTitle } from '../../utils/structureTitle'
   import FilePickerButton from './FilePickerButton.svelte'
 
   interface Props {
@@ -19,7 +20,7 @@
   const size = (bytes: number) => formatBytes(bytes, 1, i18n.locale)
   const count = (value: number) => formatCount(value, i18n.locale)
 
-  const title = $derived(structure?.metadata.name || fileName)
+  const title = $derived(structureTitle(structure?.metadata.name, fileName))
   const dimensions = $derived(
     info.dimensions
       ? `${info.dimensions.x} × ${info.dimensions.y} × ${info.dimensions.z}`
@@ -44,7 +45,7 @@
 <section class="panel" aria-labelledby="summary-title">
   <header class="head">
     <h1 id="summary-title" class="title" {title}>{title}</h1>
-    {#if structure?.metadata.name && structure.metadata.name !== fileName}
+    {#if title !== fileName}
       <p class="file" title={fileName}>{fileName}</p>
     {/if}
     {#if structure?.metadata.description}
