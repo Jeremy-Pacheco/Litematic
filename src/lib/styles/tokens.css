@@ -1,0 +1,83 @@
+/*
+ * Design tokens for LitematicViewer.
+ *
+ * Palette: copper (primary) and oxidized copper / verdigris (secondary) over
+ * cool deepslate greys. Every color is declared once with `light-dark()`:
+ *
+ * - With no `data-theme` attribute, `color-scheme: light dark` lets the
+ *   browser pick the value from `prefers-color-scheme` (automatic mode).
+ * - `data-theme="light"` / `data-theme="dark"` on <html> force one side.
+ *
+ * Contrast of the main pairs meets WCAG 2.1 AA (≥ 4.5:1 for text).
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Neutrals (deepslate) */
+  --color-bg: light-dark(#f5f6f8, #15171a);
+  --color-panel: light-dark(#ffffff, #1d2024);
+  --color-panel-hover: light-dark(#eef0f3, #252930);
+  --color-border: light-dark(#dde1e6, #2c3036);
+  --color-border-strong: light-dark(#b9bfc7, #41464d);
+  --color-text: light-dark(#1a1d21, #e7eaee);
+  --color-text-2: light-dark(#5a616b, #9198a1);
+  --color-grid: light-dark(rgb(26 29 33 / 0.045), rgb(231 234 238 / 0.035));
+
+  /* Copper (primary) */
+  --color-primary: light-dark(#a8502a, #e08a55);
+  --color-primary-hover: light-dark(#8f4321, #ea9a68);
+  --color-primary-soft: light-dark(rgb(168 80 42 / 0.1), rgb(224 138 85 / 0.16));
+  --color-on-primary: light-dark(#ffffff, #15171a);
+
+  /* Verdigris (secondary) */
+  --color-secondary: light-dark(#2e7d72, #4fa89a);
+  --color-secondary-soft: light-dark(rgb(46 125 114 / 0.1), rgb(79 168 154 / 0.16));
+
+  /* Semantic */
+  --color-error: light-dark(#b83a32, #e5675e);
+  --color-error-soft: light-dark(rgb(184 58 50 / 0.08), rgb(229 103 94 / 0.14));
+
+  --shadow-pop: 0 6px 24px light-dark(rgb(26 29 33 / 0.12), rgb(0 0 0 / 0.45));
+
+  /* Typography */
+  --font-sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+
+  /* Spacing (4 px scale) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Shape and motion */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --duration: 120ms;
+
+  /* Layout */
+  --topbar-height: 44px;
+  --grid-size: 24px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}
