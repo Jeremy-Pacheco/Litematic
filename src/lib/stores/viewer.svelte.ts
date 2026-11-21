@@ -17,9 +17,16 @@ interface ViewerSettings {
   box: boolean
   background: ViewerBackground
   panelOpen: boolean
+  layersOpen: boolean
 }
 
-const DEFAULTS: ViewerSettings = { grid: true, box: true, background: 'theme', panelOpen: true }
+const DEFAULTS: ViewerSettings = {
+  grid: true,
+  box: true,
+  background: 'theme',
+  panelOpen: true,
+  layersOpen: true,
+}
 
 /** Parses saved settings, falling back to defaults for anything invalid. */
 export function parseViewerSettings(raw: string | null): ViewerSettings {
@@ -37,7 +44,13 @@ export function parseViewerSettings(raw: string | null): ViewerSettings {
   const background = ['theme', 'dark', 'light', 'sky'].includes(v.background as string)
     ? (v.background as ViewerBackground)
     : DEFAULTS.background
-  return { grid: bool('grid'), box: bool('box'), panelOpen: bool('panelOpen'), background }
+  return {
+    grid: bool('grid'),
+    box: bool('box'),
+    panelOpen: bool('panelOpen'),
+    layersOpen: bool('layersOpen'),
+    background,
+  }
 }
 
 /** Resolves the background setting to a color. */
@@ -51,13 +64,20 @@ class ViewerState {
   box = $state(DEFAULTS.box)
   background = $state<ViewerBackground>(DEFAULTS.background)
   panelOpen = $state(DEFAULTS.panelOpen)
+  layersOpen = $state(DEFAULTS.layersOpen)
 
   init(): void {
-    const saved = parseViewerSettings(readStorage(STORAGE_KEY))
+    const raw = readStorage(STORAGE_KEY)
+    const saved = parseViewerSettings(raw)
+    // On a phone the layer panel would cover most of the view: closed until opened.
+    if (!raw?.includes('"layersOpen"') && globalThis.matchMedia?.('(max-width: 720px)').matches) {
+      saved.layersOpen = false
+    }
     this.grid = saved.grid
     this.box = saved.box
     this.background = saved.background
     this.panelOpen = saved.panelOpen
+    this.layersOpen = saved.layersOpen
   }
 
   save(): void {
@@ -66,6 +86,7 @@ class ViewerState {
       box: this.box,
       background: this.background,
       panelOpen: this.panelOpen,
+      layersOpen: this.layersOpen,
     }
     writeStorage(STORAGE_KEY, JSON.stringify(settings))
   }
