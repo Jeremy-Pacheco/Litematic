@@ -247,6 +247,7 @@ export const es = {
   viewer: {
     canvas: 'Vista 3D de la estructura',
     toolbar: 'Controles del visor',
+    open: 'Abrir',
     fit: 'Ajustar',
     views: 'Vistas',
     view: {

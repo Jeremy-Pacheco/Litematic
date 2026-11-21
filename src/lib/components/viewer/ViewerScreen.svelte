@@ -2,10 +2,12 @@
   import { STRUCTURE_ACCEPT } from '../../constants/formats'
   import { openStructureFiles } from '../../import/openStructureFiles'
   import { buildMaterialList } from '../../materials/materialList'
+  import { importState } from '../../stores/importState.svelte'
   import { viewer } from '../../stores/viewer.svelte'
   import type { StructureFileInfo } from '../../parsers/readStructureFile'
   import type { Structure } from '../../types/structure'
   import StructureSummary from '../import/StructureSummary.svelte'
+  import ReadingProgress from '../import/ReadingProgress.svelte'
   import WindowDropTarget from '../import/WindowDropTarget.svelte'
   import MaterialList from '../materials/MaterialList.svelte'
   import StructureViewer from './StructureViewer.svelte'
@@ -27,6 +29,16 @@
 <div class="screen" class:panel-open={viewer.panelOpen}>
   <section class="stage">
     <StructureViewer {structure} />
+    <!-- Another file being read: the current structure stays on screen. -->
+    {#if importState.status.kind === 'reading' && importState.current}
+      <div class="reading">
+        <ReadingProgress
+          fileName={importState.current.file.name}
+          progress={importState.status.progress}
+          oncancel={() => importState.cancel()}
+        />
+      </div>
+    {/if}
   </section>
 
   {#if viewer.panelOpen}
@@ -56,7 +68,22 @@
   }
 
   .stage {
+    position: relative;
     min-height: 0;
+  }
+
+  .reading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: var(--space-4);
+    background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  }
+
+  .reading > :global(*) {
+    width: min(460px, 100%);
+    box-shadow: var(--shadow-pop);
   }
 
   .panel {

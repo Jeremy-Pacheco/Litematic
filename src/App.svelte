@@ -3,9 +3,10 @@
   import AppShell from './lib/components/layout/AppShell.svelte'
   import { importState } from './lib/stores/importState.svelte'
 
-  // Once a structure is read, go straight to the 3D viewer.
+  // Once a structure is read, go straight to the 3D viewer; it stays open
+  // while another file is read.
   const status = $derived(importState.status)
-  const current = $derived(importState.current)
+  const shown = $derived(importState.shown)
 
   // The viewer (and Three.js) is loaded on demand, so the first screen stays
   // light; the download starts as soon as a structure is being read.
@@ -19,9 +20,9 @@
 </script>
 
 <AppShell>
-  {#if status.kind === 'ready' && status.structure && current}
+  {#if shown}
     {#await loadViewer() then { default: ViewerScreen }}
-      <ViewerScreen fileName={current.file.name} info={status.info} structure={status.structure} />
+      <ViewerScreen fileName={shown.file.name} info={shown.info} structure={shown.structure} />
     {/await}
   {:else}
     <ImportScreen />

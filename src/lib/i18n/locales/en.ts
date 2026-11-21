@@ -237,6 +237,7 @@ export const en: Messages = {
   viewer: {
     canvas: '3D view of the structure',
     toolbar: 'Viewer controls',
+    open: 'Open',
     fit: 'Fit',
     views: 'Views',
     view: {

@@ -196,6 +196,11 @@ Con la estructura lista, `App` cambia al visor (ver [RENDERING.md](RENDERING.md)
 abrir archivos vive en `import/openStructureFiles.ts`, así el visor admite soltar o abrir otro
 archivo sin volver a la pantalla de importación.
 
+Abrir otro archivo desde el visor (botón **Abrir** de la barra, «Abrir otro archivo» del panel o
+soltarlo en la ventana) **no cierra el visor**: `importState.shown` conserva la estructura en
+pantalla mientras se lee la nueva, con el progreso encima. Si la nueva falla, se mantiene la
+anterior. Durante la lectura pueden convivir ambas en memoria un momento.
+
 ## Lista de materiales
 
 ```text
