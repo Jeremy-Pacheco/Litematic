@@ -66,3 +66,10 @@ pnpm test:perf      # mediciones de memoria y tiempo (más lento; no forma parte
 Las texturas y modelos de Minecraft son propiedad de Mojang y **no se incluyen en este
 repositorio**. La aplicación los leerá del `client.jar` que el propio usuario seleccione
 desde su instalación de Minecraft, de forma totalmente local.
+
+LitematicViewer no está afiliado ni respaldado por Mojang Studios ni por Microsoft.
+Minecraft es una marca de Mojang Synergies AB.
+
+## Licencia
+
+[MIT](LICENSE) © 2026 Jéremy Paul Pacheco Oña.
