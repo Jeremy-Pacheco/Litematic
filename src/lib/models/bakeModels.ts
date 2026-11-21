@@ -43,7 +43,7 @@ export async function bakeModels(
 export function bakedTransferables(models: BakedModels): ArrayBuffer[] {
   const buffers: ArrayBuffer[] = [models.atlas.pixels.buffer as ArrayBuffer]
   for (const state of models.states) {
-    for (const groups of state.geometry) {
+    for (const groups of [...state.geometry, ...(state.fluidFull ?? [])]) {
       for (const g of groups) {
         if (g) {
           buffers.push(

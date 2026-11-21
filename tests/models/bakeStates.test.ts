@@ -16,6 +16,7 @@ import {
   type BakeAtlas,
 } from '../../src/lib/models/bakeStates'
 import { GameResources } from '../../src/lib/models/gameResources'
+import { FLUID_LAVA, FLUID_WATER } from '../../src/lib/models/bakedTypes'
 import { RenderLayer } from '../../src/lib/models/renderLayer'
 import { parseBlockStateString } from '../../src/lib/parsers/blockStateString'
 import { readStructureFile } from '../../src/lib/parsers/readStructureFile'
@@ -160,6 +161,26 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
       expect(baked.missing, text).toBe(false)
       expect(baked.empty, text).toBe(false)
     }
+  })
+
+  it('bakes a full-height shape for fluids and marks what holds water', () => {
+    const water = bakeState(state('minecraft:water[level=0]'), resources, fakeAtlas())
+    expect(water.fluid).toBe(FLUID_WATER)
+    const full = water.fluidFull![RenderLayer.Translucent]
+    // Surface moved to the top side (y = 1), sides now cover the whole block height.
+    const top = full[FACES.indexOf('up')]!
+    expect([...top.positions].filter((_, i) => i % 3 === 1)).toEqual([1, 1, 1, 1])
+    expect(full[FACES.indexOf('north')]).not.toBeNull()
+    const lava = bakeState(state('minecraft:lava[level=0]'), resources, fakeAtlas())
+    expect(lava.fluid).toBe(FLUID_LAVA)
+
+    const wet = state(
+      'minecraft:oak_stairs[facing=north,half=bottom,shape=straight,waterlogged=true]',
+    )
+    expect(bakeState(wet, resources, fakeAtlas()).fluid).toBe(FLUID_WATER)
+    expect(bakeState(wet, resources, fakeAtlas()).fluidFull).toBeNull()
+    expect(bakeState(state('minecraft:seagrass'), resources, fakeAtlas()).fluid).toBe(FLUID_WATER)
+    expect(bakeState(state('minecraft:stone'), resources, fakeAtlas()).fluid).toBe(0)
   })
 
   it('keeps tints from the block colors (grass top is green-tinted)', () => {

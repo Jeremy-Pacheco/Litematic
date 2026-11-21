@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GROUP_COUNT, type QuadGeometry } from '../../src/lib/models/bakeStates'
+import { GROUP_COUNT, INNER_GROUP, type QuadGeometry } from '../../src/lib/models/bakeStates'
 import { RenderLayer } from '../../src/lib/models/renderLayer'
 import { faceShade, Mesher, type MesherState } from '../../src/lib/viewer/mesher'
 
@@ -33,10 +33,24 @@ function quad(side: number): QuadGeometry {
 function cube(layer: number, opaque: boolean): MesherState {
   const geometry = [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
   for (let side = 0; side < 6; side++) geometry[layer][side] = quad(side)
-  return { geometry, opaqueFaces: opaque ? ALL : 0, fullFaces: ALL, empty: false }
+  return {
+    geometry,
+    opaqueFaces: opaque ? ALL : 0,
+    fullFaces: ALL,
+    empty: false,
+    fluid: 0,
+    fluidFull: null,
+  }
 }
 
-const AIR: MesherState = { geometry: [[], [], []], opaqueFaces: 0, fullFaces: 0, empty: true }
+const AIR: MesherState = {
+  geometry: [[], [], []],
+  opaqueFaces: 0,
+  fullFaces: 0,
+  empty: true,
+  fluid: 0,
+  fluidFull: null,
+}
 const STONE = cube(RenderLayer.Opaque, true)
 const GLASS = cube(RenderLayer.Cutout, false)
 
@@ -127,5 +141,49 @@ describe('Mesher caps', () => {
   it('is empty for a level of air', () => {
     const mesher = mesh([1, 2, 1], [0, 1], [AIR, STONE]).mesher
     expect(mesher.meshCap(0, 'up')).toEqual([null, null, null])
+  })
+})
+
+describe('Mesher fluids', () => {
+  /** Water: sides and bottom on their sides, surface below the top (inner group). */
+  function water(): MesherState {
+    const layer = RenderLayer.Translucent
+    const normal = [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
+    const full = [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
+    for (let side = 1; side < 6; side++) {
+      normal[layer][side] = quad(side)
+      full[layer][side] = quad(side)
+    }
+    normal[layer][INNER_GROUP] = quad(0) // surface at 14/16
+    full[layer][0] = quad(0) // surface at full height
+    return {
+      geometry: normal,
+      opaqueFaces: 0,
+      fullFaces: 0b111110,
+      empty: false,
+      fluid: 1,
+      fluidFull: full,
+    }
+  }
+  const translucent = (size: [number, number, number], blocks: number[], states: MesherState[]) =>
+    mesh(size, blocks, states).quads[RenderLayer.Translucent]
+
+  it('hides the faces between water blocks', () => {
+    expect(translucent([1, 1, 1], [1], [AIR, water()])).toBe(6)
+    // Side by side: the shared sides disappear.
+    expect(translucent([2, 1, 1], [1, 1], [AIR, water()])).toBe(10)
+    // Stacked: lower block is full height without top, upper keeps its surface.
+    expect(translucent([1, 2, 1], [1, 1], [AIR, water()])).toBe(10)
+  })
+
+  it('treats waterlogged blocks as water for the neighbouring water', () => {
+    const wetGlass = { ...GLASS, fluid: 1 }
+    // Water (1) beside waterlogged glass (2): the water face towards the glass is hidden.
+    expect(translucent([2, 1, 1], [1, 2], [AIR, water(), wetGlass])).toBe(5)
+  })
+
+  it('keeps the full-height surface for a layer cut', () => {
+    const mesher = mesh([1, 2, 1], [1, 1], [AIR, water()]).mesher
+    expect(mesher.meshCap(0, 'up')[RenderLayer.Translucent]!.quadCount).toBe(1)
   })
 })

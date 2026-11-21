@@ -11,6 +11,9 @@ import type { BlockState } from '../types/structure'
 import type { GameResources } from './gameResources'
 import {
   FACES,
+  FLUID_LAVA,
+  FLUID_NONE,
+  FLUID_WATER,
   GROUP_COUNT,
   INNER_GROUP,
   MISSING_TEXTURE,
@@ -91,7 +94,92 @@ export function bakeState(
   if (isAirId(state.name)) return emptyState()
   const result = meshOf(state, resources, atlas)
   const quads = result ? result.quads : missingCube(atlas)
+  const fluid = fluidOf(state)
+  // Fluid blocks also get their shape with the same fluid above: full height
+  // and no top face, so stacked water reads as one volume.
+  const full =
+    result && FLUID_BLOCKS.has(state.name) ? meshOf(state, resources, atlas, { up: true }) : null
+  const sorted = sortQuads(quads, atlas)
+  return {
+    ...sorted,
+    missing: result === null,
+    empty: quads.length === 0,
+    fluid,
+    fluidFull: full
+      ? withTopAtFullHeight(sortQuads(full.quads, atlas).geometry, sorted.geometry)
+      : null,
+  }
+}
 
+/**
+ * Deepslate drops the top face of a fluid with fluid above. The mesher hides
+ * it anyway in that case, but a layer cut needs it (the cap at the cut), so
+ * the surface of the normal shape is added back at full height, on the top
+ * side group where the usual culling applies.
+ */
+function withTopAtFullHeight(
+  full: (QuadGeometry | null)[][],
+  normal: (QuadGeometry | null)[][],
+): (QuadGeometry | null)[][] {
+  return full.map((groups, layer) => {
+    const surface = normal[layer][INNER_GROUP]
+    const top = surface ? liftTop(surface) : null
+    if (!top) return groups
+    const copy = [...groups]
+    copy[FACES.indexOf('up')] = top
+    return copy
+  })
+}
+
+/** The upward-facing quads of a geometry, moved to the top of the block (y = 1). */
+function liftTop(geometry: QuadGeometry): QuadGeometry | null {
+  const keep: number[] = []
+  for (let q = 0; q < geometry.quadCount; q++) {
+    if (geometry.normals[q * 12 + 1] > 0.5) keep.push(q)
+  }
+  if (keep.length === 0) return null
+  const pick = (array: Float32Array, size: number) => {
+    const out = new Float32Array(keep.length * 4 * size)
+    keep.forEach((q, i) => out.set(array.subarray(q * 4 * size, (q + 1) * 4 * size), i * 4 * size))
+    return out
+  }
+  const positions = pick(geometry.positions, 3)
+  for (let i = 1; i < positions.length; i += 3) positions[i] = 1
+  return {
+    quadCount: keep.length,
+    positions,
+    uvs: pick(geometry.uvs, 2),
+    colors: pick(geometry.colors, 3),
+    normals: pick(geometry.normals, 3),
+  }
+}
+
+const FLUID_BLOCKS = new Map([
+  ['minecraft:water', FLUID_WATER],
+  ['minecraft:lava', FLUID_LAVA],
+])
+/** Blocks that are always under water without a `waterlogged` property. */
+const ALWAYS_WATER = new Set([
+  'minecraft:bubble_column',
+  'minecraft:kelp',
+  'minecraft:kelp_plant',
+  'minecraft:seagrass',
+  'minecraft:tall_seagrass',
+])
+
+/** Fluid filling the position of a state (see `BakedState.fluid`). */
+export function fluidOf(state: BlockState): number {
+  const own = FLUID_BLOCKS.get(state.name)
+  if (own !== undefined) return own
+  if (state.properties.waterlogged === 'true' || ALWAYS_WATER.has(state.name)) return FLUID_WATER
+  return FLUID_NONE
+}
+
+/** Groups quads by render layer and side, and measures which sides they cover. */
+function sortQuads(
+  quads: Quad[],
+  atlas: BakeAtlas,
+): Pick<BakedState, 'geometry' | 'opaqueFaces' | 'fullFaces'> {
   // quads[layer][group]
   const buckets: Quad[][][] = RENDER_LAYERS.map(() => Array.from({ length: GROUP_COUNT }, () => []))
   // A side can be covered by several quads (e.g. the back of stairs: slab +
@@ -115,8 +203,6 @@ export function bakeState(
     ),
     opaqueFaces: coverageMask(opaqueCoverage),
     fullFaces: coverageMask(anyCoverage),
-    missing: result === null,
-    empty: quads.length === 0,
   }
 }
 
@@ -125,6 +211,7 @@ function meshOf(
   state: BlockState,
   resources: GameResources,
   atlas: TextureAtlasProvider,
+  cull: Partial<Record<(typeof FACES)[number], boolean>> = {},
 ): Mesh | null {
   const name = Identifier.parse(state.name)
   const dsState = new DsBlockState(name, { ...state.properties })
@@ -133,10 +220,10 @@ function meshOf(
   try {
     const definition = resources.getBlockDefinition(name)
     if (definition) {
-      mesh.merge(definition.getMesh(name, { ...state.properties }, atlas, resources, {}))
+      mesh.merge(definition.getMesh(name, { ...state.properties }, atlas, resources, cull))
       found = true
     }
-    const special = SpecialRenderers.getBlockMesh(dsState, undefined, atlas, {})
+    const special = SpecialRenderers.getBlockMesh(dsState, undefined, atlas, cull)
     if (!special.isEmpty()) {
       mesh.merge(special)
       found = true
@@ -254,5 +341,7 @@ function emptyState(): BakedState {
     fullFaces: 0,
     missing: false,
     empty: true,
+    fluid: FLUID_NONE,
+    fluidFull: null,
   }
 }

@@ -195,12 +195,16 @@ export class StructureManager {
         type: 'mesh',
         size: structure.size,
         blocks: structure.blocks,
-        states: models.states.map(({ geometry, opaqueFaces, fullFaces, empty }) => ({
-          geometry,
-          opaqueFaces,
-          fullFaces,
-          empty,
-        })),
+        states: models.states.map(
+          ({ geometry, opaqueFaces, fullFaces, empty, fluid, fluidFull }) => ({
+            geometry,
+            opaqueFaces,
+            fullFaces,
+            empty,
+            fluid,
+            fluidFull,
+          }),
+        ),
       }
       worker.postMessage(request)
     })
