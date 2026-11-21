@@ -59,6 +59,17 @@ se saltan automáticamente si el archivo no existe. Para casos generados, usa lo
 un commit fijo de PrismarineJS/minecraft-data (MIT). No se edita a mano y Prettier lo ignora. Si
 se incorporan datos de terceros, su licencia va junto a ellos en `src/lib/data/`.
 
+## Despliegue
+
+La app se publica en **https://litematic.jeremypacheco.es** con GitHub Pages:
+
+- `.github/workflows/deploy.yml`: en cada push a `main` (o a mano desde Actions) instala con
+  pnpm, ejecuta `check`, `lint`, `test` y `build`, y publica `dist/`. Si algo falla, no se
+  publica nada.
+- `public/CNAME`: el subdominio, copiado a `dist/` en cada build.
+- DNS (DonDominio): registro **CNAME** `litematic` → `jeremy-pacheco.github.io`. HTTPS lo
+  emite GitHub automáticamente cuando el DNS apunta bien.
+
 ## Dependencias
 
 Se usa **pnpm**. No se añaden dependencias sin aprobarlo previamente.
