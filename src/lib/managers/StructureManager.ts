@@ -338,12 +338,25 @@ function capKey(y: number, side: CapSide): string {
   return `${side}:${y}`
 }
 
+/**
+ * Geometry of one layer mesh. Its arrays are only needed until they reach the
+ * GPU: they are released after the upload, so each vertex is not kept twice
+ * (in the GPU and in JavaScript). Nothing reads them later: picking and layers
+ * work on the block array, and a lost WebGL context rebuilds the structure.
+ */
 function toGeometry(layer: LayerMesh): BufferGeometry {
   const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(layer.positions, 3))
-  geometry.setAttribute('uv', new BufferAttribute(layer.uvs, 2, true))
-  geometry.setAttribute('color', new BufferAttribute(layer.colors, 3, true))
-  geometry.setIndex(new BufferAttribute(layer.indices, 1))
+  const attribute = (array: ArrayLike<number>, size: number, normalized = false) =>
+    new BufferAttribute(array as Float32Array, size, normalized).onUpload(releaseArray)
+  geometry.setAttribute('position', attribute(layer.positions, 3))
+  geometry.setAttribute('uv', attribute(layer.uvs, 2, true))
+  geometry.setAttribute('color', attribute(layer.colors, 3, true))
+  geometry.setIndex(attribute(layer.indices, 1))
+  // Bounds for frustum culling are computed before the arrays are released.
   geometry.computeBoundingSphere()
   return geometry
+}
+
+function releaseArray(this: BufferAttribute): void {
+  ;(this as unknown as { array: null }).array = null
 }
