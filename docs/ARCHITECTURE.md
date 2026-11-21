@@ -20,9 +20,10 @@ src/
 │   ├── constants/       Constantes compartidas
 │   ├── utils/           Funciones puras sin dependencias de la interfaz
 │   ├── managers/        Escena, cámara, recursos… (pendiente)
-│   ├── parsers/         Lectura de .litematic, .schem y .schematic (pendiente)
-│   ├── workers/         Web Workers (pendiente)
-│   └── types/           Tipos compartidos (pendiente)
+│   ├── parsers/         Lectura de archivos: NBT, detección de formato y errores
+│   │   └── nbt/         Descompresión y lector NBT propio
+│   ├── workers/         Web Workers y su cliente para el hilo principal
+│   └── types/           Tipos compartidos (modelo NBT)
 ├── App.svelte           Componente raíz: solo compone AppShell + pantalla actual
 ├── app.css              Estilos base globales
 └── main.ts              Punto de entrada: carga preferencias y monta la app
@@ -32,26 +33,36 @@ docs/                    Documentación
 
 ## Módulos implementados
 
-| Módulo                           | Responsabilidad                                                                         |
-| -------------------------------- | --------------------------------------------------------------------------------------- |
-| `styles/tokens.css`              | Paleta, tipografía, espaciado, radios y duración de animaciones                         |
-| `stores/theme.svelte.ts`         | Tema elegido (automático, claro, oscuro) y tema efectivo                                |
-| `i18n/translate.ts`              | Tipos de mensajes, `translate()` y detección del idioma del navegador                   |
-| `i18n/i18n.svelte.ts`            | Idioma activo y función `t()` reactiva                                                  |
-| `i18n/locales/{es,en}.ts`        | Textos de la interfaz                                                                   |
-| `stores/toasts.svelte.ts`        | Cola de notificaciones con cierre automático                                            |
-| `stores/importState.svelte.ts`   | Archivo de estructura seleccionado por el usuario                                       |
-| `utils/structureFile.ts`         | Comprobación previa del archivo (extensión y tamaño cero)                               |
-| `utils/storage.ts`               | Acceso a `localStorage` que no rompe la app si no está disponible                       |
-| `utils/format.ts`                | `formatBytes`: tamaño de archivo legible según el idioma                                |
-| `constants/formats.ts`           | Formatos de estructura y sus extensiones                                                |
-| `constants/storage.ts`           | Claves de `localStorage`                                                                |
-| `components/layout/AppShell`     | Barra superior + contenido + notificaciones                                             |
-| `components/layout/TopBar`       | Marca, archivo seleccionado (nombre y tamaño), idioma y tema                            |
-| `components/import/ImportScreen` | Valida la selección y la pasa a `importState`, o muestra un error                       |
-| `components/import/DropZone`     | Selector de archivo y arrastrar y soltar en toda la ventana                             |
-| `components/feedback/Toaster`    | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`              |
-| `components/controls/*`          | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher` |
+| Módulo                           | Responsabilidad                                                                           |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| `styles/tokens.css`              | Paleta, tipografía, espaciado, radios y duración de animaciones                           |
+| `stores/theme.svelte.ts`         | Tema elegido (automático, claro, oscuro) y tema efectivo                                  |
+| `i18n/translate.ts`              | Tipos de mensajes, `translate()` y detección del idioma del navegador                     |
+| `i18n/i18n.svelte.ts`            | Idioma activo y función `t()` reactiva                                                    |
+| `i18n/locales/{es,en}.ts`        | Textos de la interfaz                                                                     |
+| `stores/toasts.svelte.ts`        | Cola de notificaciones con cierre automático                                              |
+| `stores/importState.svelte.ts`   | Archivo elegido y estado de su lectura (leyendo, listo, error); cancela la anterior       |
+| `types/nbt.ts`                   | Modelo NBT en memoria (`Map`, `TypedArray`, `NbtLongArray`)                               |
+| `parsers/nbt/decompress.ts`      | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
+| `parsers/nbt/NbtReader.ts`       | Lector NBT binario con validación de longitudes y profundidad                             |
+| `parsers/nbt/modifiedUtf8.ts`    | Decodificación de cadenas en UTF-8 modificado de Java                                     |
+| `parsers/nbt/access.ts`          | Lectura tipada de compuestos (`getInteger`, `getCompound`…)                               |
+| `parsers/detectFormat.ts`        | Identifica Litematica, Sponge v1/v2/v3 o MCEdit por el contenido                          |
+| `parsers/readStructureFile.ts`   | Flujo completo: descomprimir → NBT → detectar formato                                     |
+| `parsers/errors.ts`              | `StructureReadError` con códigos de error traducibles                                     |
+| `workers/structure.worker.ts`    | Ejecuta `readStructureFile` fuera del hilo principal                                      |
+| `workers/structureWorkerClient`  | Crea un worker por archivo; promesa, progreso y cancelación                               |
+| `utils/structureFile.ts`         | Comprobación previa del archivo (extensión y tamaño cero)                                 |
+| `utils/storage.ts`               | Acceso a `localStorage` que no rompe la app si no está disponible                         |
+| `utils/format.ts`                | `formatBytes`: tamaño de archivo legible según el idioma                                  |
+| `constants/formats.ts`           | Formatos de estructura y sus extensiones                                                  |
+| `constants/storage.ts`           | Claves de `localStorage`                                                                  |
+| `components/layout/AppShell`     | Barra superior + contenido + notificaciones                                               |
+| `components/layout/TopBar`       | Marca, archivo seleccionado (nombre, tamaño, dimensiones), idioma y tema                  |
+| `components/import/ImportScreen` | Orquesta la importación y traduce el resultado a notificaciones                           |
+| `components/import/*`            | `DropZone`, `WindowDropTarget`, `FilePickerButton`, `ReadingProgress`, `StructureSummary` |
+| `components/feedback/Toaster`    | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`                |
+| `components/controls/*`          | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher`   |
 
 ## Interfaz
 
@@ -92,17 +103,40 @@ Requiere navegadores con soporte de `light-dark()`: Chrome/Edge 123+, Firefox 12
   atributo `lang` de `<html>`.
 - Las notificaciones guardan claves, no texto, así que se traducen de nuevo si cambia el idioma.
 
-### Importación (estado actual)
+### Flujo de importación
+
+```text
+ImportScreen ─► checkStructureFile (extensión, tamaño 0: solo orientativo)
+     │
+     ▼
+importState.load(file) ─► readStructureInWorker ─► [worker] readStructureFile
+     │                         ▲                         │ decompressBlob → readNbt → detectFormat
+     │                         └──── progreso ◄──────────┤
+     ▼                                                   ▼
+ReadingProgress (barra + cancelar)            StructureFileInfo | StructureReadError
+     │
+     ▼
+StructureSummary (formato, dimensiones, DataVersion, tamaños, tiempo) + notificación
+```
 
 1. El usuario elige un archivo o lo suelta en cualquier parte de la ventana.
-2. `checkStructureFile` hace una comprobación **orientativa** por extensión y tamaño. La
-   extensión no es fiable: la validación real del contenido llegará con `feature/nbt-reader`.
-3. Si pasa, se guarda en `importState` y la barra superior muestra nombre y tamaño.
-4. Como la lectura aún no existe, se muestra un aviso que lo dice explícitamente.
+2. `checkStructureFile` descarta al momento extensiones ajenas y archivos vacíos. La extensión
+   **no se considera fiable**: decide el contenido.
+3. `importState.load()` cancela cualquier lectura anterior y crea un **worker nuevo** para el
+   archivo. Al terminar o cancelar, el worker se destruye y su memoria se libera entera.
+4. El worker descomprime, lee el NBT y detecta el formato. Al hilo principal solo vuelve un
+   resumen pequeño (`StructureFileInfo`); el árbol NBT no se copia.
+5. Si el contenido no coincide con la extensión, se avisa y se usa el contenido.
+6. Los errores llegan con un código (`too-large`, `invalid-nbt`…) que se traduce a una
+   notificación. Ver [NBT-FORMATS.md](NBT-FORMATS.md).
+
+Los bloques todavía no se interpretan: eso corresponde a los parsers de cada formato.
 
 ## Principios
 
 - **`App.svelte` no contiene lógica de negocio.** Solo compone componentes.
+- **Los workers no contienen lógica.** `structure.worker.ts` solo envuelve funciones puras
+  (`readStructureFile`) que se testean directamente en Node.
 - **Lógica pura separada del estado reactivo.** Las funciones testeables (`resolveTheme`,
   `translate`, `detectLocale`, `checkStructureFile`…) no dependen de Svelte ni del DOM; los
   stores solo las conectan con el navegador.
