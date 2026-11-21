@@ -15,8 +15,8 @@ const PROGRESS_INTERVAL_MS = 50
 
 const scope = self as unknown as DedicatedWorkerGlobalScope
 
-function post(message: WorkerResponse): void {
-  scope.postMessage(message)
+function post(message: WorkerResponse, transfer: Transferable[] = []): void {
+  scope.postMessage(message, transfer)
 }
 
 scope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
@@ -25,7 +25,7 @@ scope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
   let lastProgress = 0
   try {
-    const { info } = await readStructureFile(request.file, {
+    const { info, structure } = await readStructureFile(request.file, {
       maxBytes: request.maxBytes,
       onProgress: (progress) => {
         const now = performance.now()
@@ -34,7 +34,11 @@ scope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         post({ type: 'progress', progress })
       },
     })
-    post({ type: 'done', info })
+    // The block array is transferred, not copied: it moves to the main thread
+    // in constant time. Block entity NBT was already detached from the file
+    // buffer by the parser, so the decompressed data is not cloned.
+    const transfer = structure ? [structure.blocks.buffer] : []
+    post({ type: 'done', info, structure }, transfer)
   } catch (error) {
     const readError = toStructureReadError(error)
     post({ type: 'error', code: readError.code, message: readError.message })

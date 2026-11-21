@@ -1,20 +1,29 @@
 import { describe, expect, it } from 'vitest'
 import { toStructureReadError } from '../../src/lib/parsers/errors'
 import { readStructureFile, type ReadProgress } from '../../src/lib/parsers/readStructureFile'
-import { compound, compress, encodeNbt, int, longArray, str } from '../helpers/nbt'
+import { litematicRoot, region } from '../helpers/litematic'
+import { byteArray, compound, compress, encodeNbt, int, short, str } from '../helpers/nbt'
 
-const litematic = encodeNbt({
-  Version: int(6),
-  MinecraftDataVersion: int(3953),
-  Metadata: compound({ EnclosingSize: compound({ x: int(2), y: int(3), z: int(4) }) }),
-  Regions: compound({ main: compound({ BlockStates: longArray([1n, 2n, 3n]) }) }),
-})
+// 2 × 3 × 4 region, all stone.
+const litematic = encodeNbt(
+  litematicRoot(
+    {
+      main: region({
+        position: [0, 0, 0],
+        size: [2, 3, 4],
+        palette: ['minecraft:air', 'minecraft:stone'],
+        blocks: new Array(24).fill(1),
+      }),
+    },
+    { version: 6, dataVersion: 3953 },
+  ),
+)
 
 describe('readStructureFile', () => {
-  it('reads a gzip Litematica file end to end', async () => {
+  it('reads and parses a gzip Litematica file end to end', async () => {
     const gz = await compress(litematic)
     const phases: ReadProgress['phase'][] = []
-    const { document, info } = await readStructureFile(new Blob([gz as BlobPart]), {
+    const { document, info, structure } = await readStructureFile(new Blob([gz as BlobPart]), {
       onProgress: (p) => phases.push(p.phase),
     })
 
@@ -28,9 +37,28 @@ describe('readStructureFile', () => {
       compressedBytes: gz.byteLength,
       decompressedBytes: litematic.byteLength,
     })
+    expect(structure?.nonAirBlocks).toBe(24)
     expect(info.durationMs).toBeGreaterThanOrEqual(0)
     expect(phases[0]).toBe('decompressing')
-    expect(phases.at(-1)).toBe('parsing')
+    expect(phases).toContain('parsing')
+    expect(phases.at(-1)).toBe('decoding')
+  })
+
+  it('returns no structure for formats without a parser yet', async () => {
+    const sponge = await compress(
+      encodeNbt({
+        Version: int(2),
+        DataVersion: int(3953),
+        Width: short(1),
+        Height: short(1),
+        Length: short(1),
+        Palette: compound({ 'minecraft:air': int(0) }),
+        BlockData: byteArray(new Int8Array(1)),
+      }),
+    )
+    const { info, structure } = await readStructureFile(new Blob([sponge as BlobPart]))
+    expect(info.format).toBe('schem')
+    expect(structure).toBeNull()
   })
 
   it('rejects valid NBT that is not a structure', async () => {
