@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { loadAssetFiles, loadPackFiles } from '../assets/assetCache'
+import { applyBiome } from '../models/applyBiome'
 import { bakeModels, bakedTransferables } from '../models/bakeModels'
 import type { ModelsWorkerRequest, ModelsWorkerResponse } from './modelsProtocol'
 
@@ -25,11 +26,9 @@ scope.onmessage = async (event: MessageEvent<ModelsWorkerRequest>) => {
       return
     }
     const pack = await loadPackFiles()
-    const models = await bakeModels(
-      event.data.palette,
-      pack ? overlay(files, pack) : files,
-      event.data.data,
-    )
+    const merged = pack ? overlay(files, pack) : files
+    await applyBiome(event.data.biome, merged)
+    const models = await bakeModels(event.data.palette, merged, event.data.data)
     const message: ModelsWorkerResponse = { type: 'done', models }
     scope.postMessage(message, bakedTransferables(models))
   } catch (error) {
