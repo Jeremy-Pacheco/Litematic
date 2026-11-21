@@ -1,5 +1,7 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
+  import { measurementId } from '../../analytics/googleAnalytics'
+  import { consent } from '../../stores/consent.svelte'
   import { importState } from '../../stores/importState.svelte'
   import { formatBytes } from '../../utils/format'
   import Icon from '../controls/Icon.svelte'
@@ -35,6 +37,17 @@
 
   <div class="tools">
     <AssetsIndicator />
+    {#if measurementId()}
+      <button
+        type="button"
+        class="cookies"
+        title={i18n.t('cookies.title')}
+        aria-label={i18n.t('cookies.title')}
+        onclick={() => (consent.dialogOpen = true)}
+      >
+        <Icon name="cookie" size={15} />
+      </button>
+    {/if}
     <LanguageSwitcher />
     <ThemeSwitcher />
   </div>
@@ -49,6 +62,23 @@
     padding: 0 var(--space-3);
     background: var(--color-panel);
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .cookies {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--color-text-2);
+    cursor: pointer;
+  }
+
+  .cookies:hover {
+    background: var(--color-panel-hover);
+    color: var(--color-text);
   }
 
   .brand {

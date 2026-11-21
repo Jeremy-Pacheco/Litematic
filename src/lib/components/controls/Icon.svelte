@@ -26,6 +26,10 @@
     layers: ['M8 2 14 5 8 8 2 5z', 'M2 8l6 3 6-3', 'M2 11l6 3 6-3'],
     chevronUp: ['M4 10l4-4 4 4'],
     chevronDown: ['M4 6l4 4 4-4'],
+    cookie: [
+      'M8 1.5a6.5 6.5 0 1 0 6.5 6.5 2 2 0 0 1-2.2-2 2 2 0 0 1-2.3-2.3 2 2 0 0 1-2-2.2z',
+      'M5.5 7h.01M8.5 10.5h.01M5.5 10.5h.01M10.5 8h.01',
+    ],
   } as const satisfies Record<string, readonly string[]>
 
   export type IconName = keyof typeof ICONS
