@@ -1,5 +1,6 @@
 import { AssetError } from './errors'
 import type { GameVersion } from './minecraftJar'
+import type { PackInfo } from './resourcePack'
 
 /**
  * IndexedDB cache of the extracted game assets, so the user selects the jar
@@ -10,6 +11,10 @@ import type { GameVersion } from './minecraftJar'
  * - `vanilla:lang`  — en_us translations (≈ 0.5 MB, read at startup)
  * - `vanilla:files` — every extracted file (≈ 4 MB, read only by the
  *   renderer once it exists)
+ *
+ * And the user's resource pack (only one, the last imported):
+ * - `pack:meta`  — name, description, formats, sizes and icon (read at startup)
+ * - `pack:files` — its usable files, laid over the game files when baking
  */
 
 const DB_NAME = 'litematicviewer'
@@ -19,6 +24,8 @@ const KEYS = {
   meta: 'vanilla:meta',
   lang: 'vanilla:lang',
   files: 'vanilla:files',
+  packMeta: 'pack:meta',
+  packFiles: 'pack:files',
 } as const
 
 export interface AssetsMeta {
@@ -31,6 +38,17 @@ export interface AssetsMeta {
 }
 
 export type LangTable = Readonly<Record<string, string>>
+
+export interface PackMeta extends PackInfo {
+  /** File name of the imported zip. */
+  name: string
+  fileCount: number
+  bytes: number
+  /** `pack.png`, if the pack has one. */
+  icon: Uint8Array | null
+  /** Distinct value per import, so the viewer knows when to rebuild. */
+  savedAt: number
+}
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -99,6 +117,30 @@ export async function clearAssets(): Promise<void> {
     store.delete(KEYS.meta)
     store.delete(KEYS.lang)
     store.delete(KEYS.files)
+  })
+}
+
+export async function savePack(meta: PackMeta, files: Map<string, Uint8Array>): Promise<void> {
+  await run('readwrite', (store) => {
+    store.put(meta, KEYS.packMeta)
+    store.put(files, KEYS.packFiles)
+  })
+}
+
+export async function loadPackMeta(): Promise<PackMeta | null> {
+  return (await run<PackMeta>('readonly', (store) => store.get(KEYS.packMeta))) ?? null
+}
+
+export async function loadPackFiles(): Promise<Map<string, Uint8Array> | null> {
+  return (
+    (await run<Map<string, Uint8Array>>('readonly', (store) => store.get(KEYS.packFiles))) ?? null
+  )
+}
+
+export async function clearPack(): Promise<void> {
+  await run('readwrite', (store) => {
+    store.delete(KEYS.packMeta)
+    store.delete(KEYS.packFiles)
   })
 }
 
