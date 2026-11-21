@@ -25,6 +25,13 @@ describe('signTextOf', () => {
     })
   })
 
+  it('reads hanging signs (id "minecraft:hanging_sign")', () => {
+    const nbt = compound([
+      ['front_text', compound([['messages', strings(['{"text":"Bar"}', '""', '""', '""'])]])],
+    ])
+    expect(signTextOf('minecraft:hanging_sign', nbt)?.front?.lines[0]).toBe('Bar')
+  })
+
   it('reads 1.21.5+ components stored as NBT and plain strings', () => {
     const nbt = compound([
       [
@@ -69,6 +76,7 @@ describe('signTextOf', () => {
     const blank = compound([['front_text', compound([['messages', strings(['""', '""'])]])]])
     expect(signTextOf('minecraft:sign', blank)).toBeNull()
     expect(signTextOf('minecraft:chest', blank)).toBeNull()
+    expect(signTextOf('minecraft:not_a_sign', blank)).toBeNull()
     expect(message('{"text":"a\\u0007b"}')).toBe('ab')
     expect(message('x'.repeat(500))).toHaveLength(90)
   })
@@ -77,18 +85,44 @@ describe('signTextOf', () => {
 describe('signPlacement', () => {
   const state = (s: string) => parseBlockStateString(s)!
 
-  it('places standing and wall signs, not hanging ones', () => {
-    expect(signPlacement(state('minecraft:oak_sign[rotation=4]'))).toEqual({
+  it('places every kind of sign, turning as the model that was drawn', () => {
+    const kindAndAngle = (text: string, special = false) => {
+      const placement = signPlacement(state(text), special)
+      return placement && { kind: placement.kind, angle: placement.angle }
+    }
+    // Game models turn clockwise from south; Deepslate's the other way, from north.
+    expect(kindAndAngle('minecraft:oak_sign[rotation=4]')).toEqual({
+      kind: 'standing',
+      angle: -Math.PI / 2,
+    })
+    expect(kindAndAngle('minecraft:oak_sign[rotation=4]', true)).toEqual({
       kind: 'standing',
       angle: Math.PI / 2,
     })
-    expect(signPlacement(state('minecraft:oak_wall_sign[facing=south]'))).toEqual({
+    expect(kindAndAngle('minecraft:oak_wall_sign[facing=south]')).toEqual({
+      kind: 'wall',
+      angle: 0,
+    })
+    expect(kindAndAngle('minecraft:oak_wall_sign[facing=south]', true)).toEqual({
       kind: 'wall',
       angle: Math.PI,
     })
-    expect(signPlacement(state('minecraft:oak_hanging_sign[rotation=0]'))).toBeNull()
+    expect(kindAndAngle('minecraft:oak_hanging_sign[attached=true,rotation=8]')?.kind).toBe(
+      'hanging',
+    )
+    expect(kindAndAngle('minecraft:oak_wall_hanging_sign[facing=east]')).toEqual({
+      kind: 'wall_hanging',
+      angle: Math.PI / 2,
+    })
     expect(signPlacement(state('minecraft:oak_sign[rotation=99]'))).toBeNull()
+    expect(signPlacement(state('minecraft:oak_wall_sign[facing=up]'))).toBeNull()
     expect(signPlacement(state('minecraft:stone'))).toBeNull()
+  })
+
+  it('uses the board of the model that was drawn', () => {
+    const wall = state('minecraft:oak_wall_sign[facing=north]')
+    expect(signPlacement(wall)!.board.scale).toBe(1)
+    expect(signPlacement(wall, true)!.board.scale).toBe(2 / 3)
   })
 })
 

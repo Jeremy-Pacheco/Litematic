@@ -23,6 +23,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | —   | `fix/legacy-block-renames`         | `.schematic`: nombres de bloque renombrados después de la 1.13             | ✅     |
 | —   | `fix/block-state-upgrade`          | Puesta al día de estados de archivos 1.13+ (todos los formatos)            | ✅     |
 | —   | `fix/waterlogged-fluids`           | El agua de los bloques anegados se une al agua de alrededor                | ✅     |
+| —   | `feature/hanging-sign-text`        | Texto de carteles colgantes; texto colocado sobre el modelo dibujado       | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

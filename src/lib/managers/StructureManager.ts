@@ -102,8 +102,13 @@ export class StructureManager {
     this.#capMaterials = createLayerMaterials(this.#texture)
 
     const stats = await this.#mesh({ ...structure, blocks: variants.blocks }, models, onProgress)
-    // Sign text on top of the boards (cut by the same layer planes).
-    const signs = buildSignTextMeshes(structure, this.#planes)
+    // Sign text on top of the boards (cut by the same layer planes), placed
+    // on the board of the model each state was drawn with.
+    const signs = buildSignTextMeshes(
+      { ...structure, palette: variants.palette, blocks: variants.blocks },
+      this.#planes,
+      models.states.map((state) => state.specialModel),
+    )
     for (const mesh of signs.meshes) this.#scene.content.add(mesh)
     if (signs.meshes.length > 0) this.#scene.requestRender()
     this.#updateCaps()

@@ -147,7 +147,3 @@ incluye una tabla de formatos → versiones, para no inventar correspondencias.
 - No se admiten formatos ajenos al juego: texturas conectadas de OptiFine (CTM), modelos
   emisivos, etc.
 - Las animaciones muestran su primer fotograma, como las del juego.
-
-## Pendiente
-
-- Texto de los carteles colgantes.

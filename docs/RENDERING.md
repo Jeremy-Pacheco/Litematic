@@ -79,10 +79,25 @@ El texto se lee del block entity en todos sus formatos (`front_text`/`back_text`
 mensajes JSON o componentes NBT de 1.21.5+; `Text1`…`Text4` anteriores; dentro de `Data` en
 Sponge v3), sin caracteres de control y con 90 caracteres por línea como mucho. Cada cara con
 texto es una casilla de 256 × 128 px en páginas de 2048 px (128 por página, como mucho 4 páginas):
-una malla y una textura por página, recortadas por los mismos planos de las capas. El texto se
-coloca delante del tablero con la misma transformación de Deepslate (giro de 16 posiciones o
-orientación de pared). Color de tinte del juego, oscurecido salvo con texto brillante (que lleva
-contorno). Limitaciones: carteles colgantes sin texto; la letra es la del sistema, no la del juego.
+una malla y una textura por página, recortadas por los mismos planos de las capas.
+
+El texto se coloca delante de la tabla **del modelo que se dibujó**, porque los dos no coinciden:
+
+| Modelo                                             | Tablas                                    | Giro                                          |
+| -------------------------------------------------- | ----------------------------------------- | --------------------------------------------- |
+| Del juego (JSON, 26.x)                             | Las de sus modelos; el frente mira al sur | Horario desde el sur (`rotation`, `facing`)   |
+| De Deepslate (archivos del juego sin esos modelos) | Las de sus `SpecialRenderers`, a 2/3      | Antihorario desde el norte, como lo aplica él |
+
+`BakedState.specialModel` dice cuál se usó en cada estado de la paleta. Valen los carteles de pie,
+de pared, colgantes y colgantes de pared (block entity `minecraft:hanging_sign`). La tabla de un
+colgante es más cuadrada (14 × 10) que la casilla (2 : 1), así que el texto se ensancha al dibujarlo
+para que la letra no salga estirada. Un test comprueba con el jar real y con Deepslate que, en
+todas las rotaciones, el texto de cada lado queda pegado a su cara de la tabla y derecho.
+
+Color de tinte del juego, oscurecido salvo con texto brillante (que lleva contorno). Limitaciones:
+la letra es la del sistema, no la del juego; los colgantes sin enganchar con `rotation` 3, 7, 11 y
+15 no tienen modelo en 26.x (su JSON gira un elemento con ángulos `x`/`y`/`z`, que Deepslate no lee)
+y se dibujan como «falta modelo».
 
 ### Estandartes con dibujos (`models/blockEntityRender.ts`)
 
