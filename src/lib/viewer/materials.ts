@@ -6,6 +6,7 @@ import {
   RGBAFormat,
   SRGBColorSpace,
   type Material,
+  type Plane,
 } from 'three'
 import { RenderLayer } from '../models/renderLayer'
 
@@ -30,9 +31,15 @@ export function createAtlasTexture(pixels: Uint8ClampedArray, size: number): Dat
  * (Minecraft's fixed per-face shading and biome tints), so the materials are
  * unlit and cheap. Faces are double-sided because some models (cross plants,
  * panes) are meant to be seen from both sides.
+ *
+ * `clippingPlanes` (shared, so moving them needs no material update) cut the
+ * geometry for the layer system.
  */
-export function createLayerMaterials(texture: DataTexture): Material[] {
-  const base = { map: texture, vertexColors: true, side: DoubleSide } as const
+export function createLayerMaterials(
+  texture: DataTexture,
+  clippingPlanes: Plane[] | null = null,
+): Material[] {
+  const base = { map: texture, vertexColors: true, side: DoubleSide, clippingPlanes } as const
   const materials: Material[] = []
   materials[RenderLayer.Opaque] = new MeshBasicMaterial({ ...base })
   materials[RenderLayer.Cutout] = new MeshBasicMaterial({ ...base, alphaTest: 0.5 })
