@@ -16,6 +16,13 @@
     upload: ['M8 10.5V2.5M4.5 6 8 2.5 11.5 6', 'M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2'],
     close: ['M4 4l8 8M12 4l-8 8'],
     cube: ['M8 1.5 14 5v6l-6 3.5L2 11V5z', 'M2 5l6 3.5L14 5M8 8.5v6'],
+    fit: ['M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4'],
+    grid: ['M2 2h12v12H2z', 'M6 2v12M10 2v12M2 6h12M2 10h12'],
+    box: ['M3 5.5 8 3l5 2.5v5L8 13l-5-2.5z', 'M3 5.5 8 8l5-2.5M8 8v5'],
+    panel: [
+      'M2 2.5h12a.5.5 0 0 1 .5.5v10a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5z',
+      'M10 2.5v11',
+    ],
   } as const satisfies Record<string, readonly string[]>
 
   export type IconName = keyof typeof ICONS

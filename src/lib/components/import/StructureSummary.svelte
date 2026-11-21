@@ -129,10 +129,6 @@
     </ul>
   {/if}
 
-  <p class="pending">
-    {i18n.t(structure ? 'import.viewerPending' : 'import.blocksPending')}
-  </p>
-
   <div class="actions">
     <FilePickerButton label={i18n.t('import.openAnother')} {accept} variant="secondary" {onfiles} />
   </div>
@@ -223,14 +219,6 @@
     border-left: 2px solid var(--color-primary);
     background: var(--color-primary-soft);
     font-size: var(--text-sm);
-  }
-
-  .pending {
-    padding: var(--space-2) var(--space-3);
-    border-left: 2px solid var(--color-secondary);
-    background: var(--color-secondary-soft);
-    font-size: var(--text-sm);
-    color: var(--color-text);
   }
 
   .actions {

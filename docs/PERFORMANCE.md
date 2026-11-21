@@ -142,21 +142,49 @@ Medido con `pnpm test:perf` (`tests/perf/mceditParser.perf.test.ts`): 512 × 256
 - Coste proporcional a los **estados de la paleta**, no a los bloques.
 - Los arrays de geometría y el atlas se **transfieren** sin copia.
 - Los 4 MB de recursos se leen de IndexedDB dentro del worker; no pasan por el hilo principal.
-- Deepslate y el worker de modelos aún **no entran en el build**: los usará el visor.
+
+## Visor 3D (`feature/structure-viewer`)
+
+Medido en Chrome con la **GPU real** (NVIDIA RTX 3070, ANGLE/D3D11), a 1440 × 900.
+
+| Estructura                      |   Bloques | Secciones | Triángulos | Visible tras elegir el archivo |
+| ------------------------------- | --------: | --------: | ---------: | -----------------------------: |
+| `.schem` real (casa)            |       711 |         1 |      5 714 |                        ~0,15 s |
+| `.litematic` real (torre)       |     5 383 |        29 |     64 904 |                         ~0,2 s |
+| Terreno generado 256 × 96 × 256 | 2 878 516 |       779 |  2 096 038 |                    **~0,95 s** |
+
+Terreno grande girando la cámara: **1 283 _draw calls_, 3,6–3,9 ms por frame (mediana) y 5,5–6,1 ms
+(p95)**. Hubo **0 tareas largas** en el hilo principal durante la carga y 0 frames con la imagen
+quieta. Al cambiar de estructura se liberan las geometrías (1 283 → 2).
+
+Con dibujado por software (SwiftShader, sin GPU) el mismo terreno tarda ~7 s y produce tareas
+largas: el coste es del rasterizado por CPU, no de la app.
+
+Mejoras aplicadas y medidas en esta funcionalidad:
+
+| Cambio                                              | Antes                           | Después            |
+| --------------------------------------------------- | ------------------------------- | ------------------ |
+| Translúcidos en una sola pasada (`forceSinglePass`) | 3 613 174 triángulos dibujados  | 2 096 038          |
+| Vértices compactos y subida repartida por frames    | tareas largas de hasta 542 ms   | 0 (GPU real)       |
+| Constantes del bake en un módulo sin Deepslate      | `mesher.worker.js` 235 kB       | 3 kB               |
+| Visor cargado bajo demanda                          | `index.js` 675 kB (180 kB gzip) | 96 kB (35 kB gzip) |
 
 ## Compilación
 
-Tras `feature/minecraft-assets`:
+Tras `feature/structure-viewer`:
 
-| Archivo               |    Tamaño |     gzip |
-| --------------------- | --------: | -------: |
-| `index.js`            | 106,51 kB | 37,70 kB |
-| `index.css`           |  19,21 kB |  3,83 kB |
-| `structure.worker.js` |  19,36 kB |        — |
-| `assets.worker.js`    |  11,23 kB |        — |
-| `legacyBlocks.js`     |  99,26 kB |  12,3 kB |
-
-Deepslate no se incluye en el build: por ahora solo lo usan los tests.
+| Archivo                              |    Tamaño |      gzip | Cuándo se descarga               |
+| ------------------------------------ | --------: | --------: | -------------------------------- |
+| `index.js`                           |  95,73 kB |  35,18 kB | Al abrir la app                  |
+| `index.css`                          |  12,47 kB |   2,87 kB | Al abrir la app                  |
+| `ViewerScreen.js` (visor y Three.js) | 581,96 kB | 146,94 kB | Al empezar a leer una estructura |
+| `ViewerScreen.css`                   |   9,44 kB |   2,01 kB | Con el visor                     |
+| `structure.worker.js`                |  19,36 kB |         — | Al leer una estructura           |
+| `models.worker.js` (Deepslate)       | 241,31 kB |         — | Al mostrar en 3D                 |
+| `mesher.worker.js`                   |   3,00 kB |         — | Al mostrar en 3D                 |
+| `assets.worker.js`                   |  11,23 kB |         — | Al cargar el client.jar          |
+| `legacyBlocks.js`                    |  99,26 kB |   12,3 kB | Solo con `.schematic`            |
 
 La interfaz no hace trabajo continuo: no hay bucles de animación ni temporizadores salvo el
-cierre automático de las notificaciones y los mensajes de progreso durante una lectura.
+cierre automático de las notificaciones y los mensajes de progreso durante una lectura. El visor
+solo dibuja cuando cambia la cámara o la escena.

@@ -2,11 +2,12 @@
 
 Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Litematica.
 
-> **Estado:** en desarrollo temprano. La app abre archivos `.litematic`, `.schem` y
-> `.schematic`, comprueba que son válidos y los lee por completo (bloques, paleta, regiones y
-> entidades; los `.schematic` antiguos se traducen a bloques modernos) y muestra la **lista de
-> materiales** con lo que te falta, pero **todavía no hay vista 3D**. Consulta [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada
-> funcionalidad.
+> **Estado:** en desarrollo. La app abre archivos `.litematic`, `.schem` y `.schematic`,
+> comprueba que son válidos y los lee por completo (bloques, paleta, regiones y entidades; los
+> `.schematic` antiguos se traducen a bloques modernos). Los **muestra en 3D con las texturas de
+> tu propio Minecraft** (cargando su `client.jar`) y calcula la **lista de materiales** con lo
+> que te falta. Pendiente: capas, inspector de bloques y resource packs. Consulta
+> [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada funcionalidad.
 
 ## Objetivo
 
@@ -22,7 +23,7 @@ Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Lite
 | ----------- | ------------------------------------------------------ |
 | Interfaz    | Svelte 5 + TypeScript                                  |
 | Compilación | Vite                                                   |
-| Render 3D   | Three.js _(pendiente)_                                 |
+| Render 3D   | Three.js                                               |
 | NBT         | Lector propio (lectura) + Deepslate (escritura, tests) |
 | Tests       | Vitest                                                 |
 | Calidad     | ESLint + Prettier                                      |
