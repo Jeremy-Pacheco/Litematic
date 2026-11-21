@@ -36,6 +36,8 @@ describe.skipIf(!fs.existsSync(FILE))('real file: house-69 (WorldEdit 7.4.6, Spo
       legacyBlockNames: false,
       overlappingBlocks: 0,
       skippedObjects: 0,
+      unknownLegacyBlocks: 0,
+      approximateLegacyStates: false,
     })
   })
 })

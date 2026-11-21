@@ -38,6 +38,9 @@
       list.push(i18n.t('warnings.overlap', { count: count(w.overlappingBlocks) }))
     if (w.skippedObjects > 0)
       list.push(i18n.t('warnings.skipped', { count: count(w.skippedObjects) }))
+    if (w.unknownLegacyBlocks > 0)
+      list.push(i18n.t('warnings.unknownLegacy', { count: count(w.unknownLegacyBlocks) }))
+    if (w.approximateLegacyStates) list.push(i18n.t('warnings.approximateLegacy'))
     return list
   })
 </script>

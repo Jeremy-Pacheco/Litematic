@@ -118,6 +118,9 @@ export const en: Messages = {
     invalidIndices: '{count} blocks used a missing state and were read as air.',
     overlap: '{count} positions were taken by several regions; the last one was used.',
     skipped: '{count} entities had no valid position and were skipped.',
+    unknownLegacy: '{count} old blocks have no known equivalent and were read as air.',
+    approximateLegacy:
+      'File from before Minecraft 1.13: blocks that depend on their neighbors (fences, stairs, doors…) may show their default shape.',
   },
   toast: {
     region: 'Notifications',

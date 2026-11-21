@@ -90,15 +90,33 @@ vistos desde la interfaz.
 - Camino rápido para varints de un byte, que son todos los de paletas de hasta 128 estados.
 - La traducción índice local → global usa una tabla (`Int32Array`), no un `Map`.
 
+## Decodificación de MCEdit (`feature/legacy-schematic-parser`)
+
+Medido con `pnpm test:perf` (`tests/perf/mceditParser.perf.test.ts`): 512 × 256 × 512 con IDs
+(0–199) y metadatos aleatorios, partiendo del NBT ya leído.
+
+| Bloques | Estados resultantes | Tiempo | Velocidad        | Memoria nueva                 |
+| ------: | ------------------: | -----: | ---------------- | ----------------------------- |
+|  67,1 M |                1337 | 581 ms | ~116 M bloques/s | 128 MiB (2 B/bloque), heap +1 |
+
+- Cada `id:meta` distinto se traduce una sola vez; luego se usa una tabla de 65 536 enteros.
+- La tabla de IDs antiguos se carga con `import()` dentro del worker y es un **fragmento aparte**
+  (99,3 kB, 12,3 kB con gzip). Comprobado en el navegador con el build de producción: no se
+  descarga al abrir `.litematic` o `.schem`, solo al abrir un `.schematic`.
+- Para que el worker pueda separar fragmentos se genera como **módulo ES**
+  (`worker.format: 'es'` en `vite.config.ts`); el formato por defecto (`iife`) metía la tabla
+  dentro del worker (118 kB).
+
 ## Compilación
 
-Tras `feature/schem-parser`:
+Tras `feature/legacy-schematic-parser`:
 
 | Archivo               |   Tamaño |     gzip |
 | --------------------- | -------: | -------: |
-| `index.js`            | 75,46 kB | 28,42 kB |
+| `index.js`            | 76,13 kB | 28,64 kB |
 | `index.css`           | 11,09 kB |  2,58 kB |
-| `structure.worker.js` | 16,95 kB |        — |
+| `structure.worker.js` | 19,28 kB |        — |
+| `legacyBlocks.js`     | 99,26 kB |  12,3 kB |
 
 Deepslate no se incluye en el build: por ahora solo lo usan los tests.
 

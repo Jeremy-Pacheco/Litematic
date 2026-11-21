@@ -91,5 +91,7 @@ export function emptyWarnings(): StructureWarnings {
     legacyBlockNames: false,
     overlappingBlocks: 0,
     skippedObjects: 0,
+    unknownLegacyBlocks: 0,
+    approximateLegacyStates: false,
   }
 }

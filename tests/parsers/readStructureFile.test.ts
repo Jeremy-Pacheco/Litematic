@@ -61,20 +61,20 @@ describe('readStructureFile', () => {
     expect(structure?.nonAirBlocks).toBe(1)
   })
 
-  it('returns no structure for formats without a parser yet (MCEdit)', async () => {
+  it('parses MCEdit schematics, loading the legacy id table on demand', async () => {
     const mcedit = await compress(
       encodeNbt({
         Width: short(1),
         Height: short(1),
         Length: short(1),
         Materials: str('Alpha'),
-        Blocks: byteArray(new Int8Array(1)),
-        Data: byteArray(new Int8Array(1)),
+        Blocks: byteArray(new Int8Array([35])),
+        Data: byteArray(new Int8Array([14])),
       }),
     )
     const { info, structure } = await readStructureFile(new Blob([mcedit as BlobPart]))
     expect(info.format).toBe('schematic')
-    expect(structure).toBeNull()
+    expect(structure?.palette[1].name).toBe('minecraft:red_wool')
   })
 
   it('rejects valid NBT that is not a structure', async () => {

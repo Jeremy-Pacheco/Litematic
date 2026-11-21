@@ -4,6 +4,7 @@ import type { StructureFormat } from '../constants/formats'
 import { detectFormat, type DetectedFormat } from './detectFormat'
 import { StructureReadError } from './errors'
 import { parseLitematic } from './litematic/LitematicParser'
+import { parseMcEdit } from './mcedit/McEditParser'
 import { decompressBlob, type Compression, type DecompressOptions } from './nbt/decompress'
 import { readNbt } from './nbt/NbtReader'
 import { parseSponge } from './sponge/SpongeParser'
@@ -36,12 +37,17 @@ export interface ReadStructureResult {
   structure: Structure | null
 }
 
-type StructureParser = (root: NbtCompound, onProgress?: ParseProgressCallback) => Structure
+/** A parser may be async when it needs to load data on demand (MCEdit's id table). */
+type StructureParser = (
+  root: NbtCompound,
+  onProgress?: ParseProgressCallback,
+) => Structure | Promise<Structure>
 
-/** Block parsers available so far. The rest arrive in their own features. */
-const PARSERS: Partial<Record<StructureFormat, StructureParser>> = {
+/** Block parser of each format. */
+const PARSERS: Record<StructureFormat, StructureParser> = {
   litematic: parseLitematic,
   schem: parseSponge,
+  schematic: parseMcEdit,
 }
 
 /**
@@ -79,13 +85,11 @@ export async function readStructureFile(
     )
   }
 
-  const parse = PARSERS[detected.format]
-  let structure: Structure | null = null
-  if (parse) {
-    signal?.throwIfAborted()
-    onProgress?.({ phase: 'decoding', fraction: 0 })
-    structure = parse(document.root, (fraction) => onProgress?.({ phase: 'decoding', fraction }))
-  }
+  signal?.throwIfAborted()
+  onProgress?.({ phase: 'decoding', fraction: 0 })
+  const structure = await PARSERS[detected.format](document.root, (fraction) =>
+    onProgress?.({ phase: 'decoding', fraction }),
+  )
 
   return {
     document,
