@@ -107,6 +107,37 @@ Medido con `pnpm test:perf` (`tests/perf/mceditParser.perf.test.ts`): 512 × 256
   (`worker.format: 'es'` en `vite.config.ts`); el formato por defecto (`iife`) metía la tabla
   dentro del worker (118 kB).
 
+### Estados de block entities y vecinos (`feature/legacy-schematic-states`)
+
+Mismo test, ahora con dos casos y midiendo el parser completo (decodificación + block entities +
+vecinos + limpieza de la paleta). Los dos casos se midieron antes y después en el mismo equipo y
+con los mismos datos generados:
+
+| Caso (512 × 256 × 512, 67,1 M bloques)                                  |  Antes |  Después |
+| ----------------------------------------------------------------------- | -----: | -------: |
+| IDs 0–199 aleatorios (≈ 25 % necesitan una regla; peor caso)            | 610 ms | 1 859 ms |
+| 50 % piedra, 5 % vallas/escaleras/paneles/muros/redstone/puertas/cofres | 734 ms | 1 390 ms |
+
+Memoria: igual (128 MiB del array de bloques, que se corrige en el sitio; la caché de resultados
+ocupa `estados × 162 × 4 B`, menos de 1 MiB).
+
+De dónde sale el tiempo (medido por fases en el caso del 5 %):
+
+- **Recorrido**: unos 230 ms solo para mirar las 67 M posiciones (una tabla de 64 KiB indexada
+  por estado, sin comprobación de límites).
+- **Reglas**: unos 110 ns por bloque que necesita una, sobre todo leyendo 4–6 vecinos.
+- **Limpieza de la paleta**: una pasada (~50 ms) solo si quedan estados sin usar; reutiliza los
+  recuentos de `finishStructure`.
+
+Probado y descartado o insuficiente: una caché `Map` con claves grandes (V8 las guarda como
+números de coma flotante; sustituida por una tabla plana) y closures por bloque (quitadas). Lo que
+queda es el coste real de leer los vecinos. Una mejora posible, no aplicada: guardar durante la
+decodificación las posiciones que necesitan regla para no recorrer después toda la estructura
+(ahorraría unos 230 ms a cambio de 4 B por bloque afectado).
+
+Todo esto ocurre en el worker y tiene progreso propio: la barra reparte la decodificación (0–50 %)
+y el paso de vecinos (50–100 %).
+
 ## Lista de materiales (`feature/material-list`)
 
 - El recuento por estado (`blockCounts`) se hace en **la misma pasada** que ya contaba los bloques
