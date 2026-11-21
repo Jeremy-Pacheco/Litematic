@@ -124,6 +124,10 @@ export const es = {
     invalidIndices: '{count} bloques usaban un estado inexistente y se han leído como aire.',
     overlap: '{count} posiciones estaban ocupadas por varias regiones; se ha usado la última.',
     skipped: '{count} entidades no tenían una posición válida y se han omitido.',
+    unknownLegacy:
+      '{count} bloques antiguos no tienen un equivalente conocido y se han leído como aire.',
+    approximateLegacy:
+      'Archivo anterior a Minecraft 1.13: los bloques que dependen de sus vecinos (vallas, escaleras, puertas…) pueden verse con su forma por defecto.',
   },
   toast: {
     region: 'Notificaciones',
