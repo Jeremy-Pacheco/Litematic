@@ -25,3 +25,6 @@ dist-ssr
 
 # Claude local instructions
 CLAUDE.md
+
+# Local test fixtures (real user files, not redistributable)
+tests/fixtures/local/
