@@ -6,7 +6,7 @@ import { readZip, type ZipLimits } from './zipReader'
 
 /**
  * Reads a user resource pack (`.zip`): its `pack.mcmeta`, its icon and the
- * files the viewer can use (block states, block models, textures), with the
+ * files the viewer can use (block states, block models, fonts, textures), with the
  * overlays that apply to the loaded game version already merged in.
  *
  * The result is a map of files with the same paths as the client jar
@@ -19,7 +19,7 @@ export const MAX_TEXTURE_SIDE = 4096
 export const MAX_TEXTURE_PIXELS = 16 * 1024 * 1024
 
 const ASSET_FILE =
-  /^assets\/[a-z0-9_.-]+\/(blockstates\/[^/]+\.json|models\/.+\.json|textures\/.+\.(png|mcmeta))$/
+  /^assets\/[a-z0-9_.-]+\/(blockstates\/[^/]+\.json|models\/.+\.json|font\/.+\.json|textures\/.+\.(png|mcmeta))$/
 /** Up to two leading folders: the zip's own root folder and an overlay folder. */
 const WANTED = new RegExp(
   `^(?:[^/]+/){0,2}(?:pack\\.mcmeta|pack\\.png|${ASSET_FILE.source.slice(1, -1)})$`,

@@ -104,8 +104,22 @@ colgante es más cuadrada (14 × 10) que la casilla (2 : 1), así que el texto s
 para que la letra no salga estirada. Un test comprueba con el jar real y con Deepslate que, en
 todas las rotaciones, el texto de cada lado queda pegado a su cara de la tabla y derecho.
 
-Color de tinte del juego, oscurecido salvo con texto brillante (que lleva contorno). Limitación: la
-letra es la del sistema, no la del juego.
+**Letra del juego (`models/signFont.ts`).** En el worker de modelos, si la paleta tiene carteles,
+se lee la fuente `minecraft:default` de los archivos del juego (o del resource pack): se siguen sus
+`reference` (con los filtros de la fuente normal, `uniform: false`) y se usan los proveedores
+`bitmap` y `space`; el primero que tiene un carácter gana. El ancho de cada letra es, como en el
+juego, su última columna con píxeles, y el avance ese ancho redondeado más 1 (`i` = 2, `A` = 6,
+espacio = 4). Las hojas de letras viajan con `BakedModels.signFont`. El texto se dibuja a la escala
+del juego (`SIGN_TEXT`): 96 px de letra por bloque, líneas de 10 px y 90 px de ancho como mucho en
+los carteles normales; 64 / 0,9 px por bloque, líneas de 9 px y 60 px en los colgantes. Cada línea
+se compone a 1 px de letra en un canvas auxiliar, se tiñe y se copia a la casilla sin suavizado
+(la textura usa `NearestFilter` al ampliar, para que se vean los píxeles). El texto brillante
+lleva el contorno del juego: la línea en el color oscurecido (crema para el negro) alrededor, a 1
+px de letra.
+
+Si no hay fuente (recursos extraídos antes de leerla) o una línea tiene caracteres que la fuente no
+trae (la Unifont del juego, con chino, japonés, emojis…, no está en el jar), esa línea se dibuja
+con la letra del sistema. Color de tinte del juego, oscurecido salvo con texto brillante.
 
 ### Estandartes con dibujos (`models/blockEntityRender.ts`)
 
@@ -271,7 +285,9 @@ también al pulsar en el aire de su celda.
 
 - **Fluidos:** todo fluido es una fuente quieta (altura de su `level`); no se calcula la inclinación
   del agua que corre ni la altura según los bloques vecinos.
-- **Texto de los carteles:** con la letra del sistema, no la del juego, y como mucho 512 caras con
+- **Texto de los carteles:** las líneas con caracteres fuera de las hojas de letras del jar (chino,
+  japonés, emojis…) usan la letra del sistema; no se aplican los estilos de los componentes de
+  texto (negrita, colores por tramo); y como mucho 512 caras con
   texto por estructura (4 páginas); las que sobran no se dibujan y se avisa.
 - **Estandartes:** como mucho 16 capas de dibujos por estandarte.
 - **Texturas animadas:** se usa el primer fotograma.

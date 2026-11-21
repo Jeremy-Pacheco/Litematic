@@ -291,6 +291,9 @@ export const es = {
     signsTitle: 'Demasiados carteles',
     signsSkipped:
       'El texto de {count} caras de carteles no se muestra para no agotar la memoria gráfica.',
+    signFontTitle: 'Carteles sin la letra del juego',
+    signFontMissing:
+      'Los recursos de Minecraft cargados son de una versión anterior del visor y no incluyen la fuente. Vuelve a cargar el client.jar para ver los carteles con la letra del juego.',
     missingTitle: 'Bloques sin modelo',
     missing:
       '{count} tipos de bloque no tienen modelo en los recursos cargados y se muestran con la textura de «falta textura».',

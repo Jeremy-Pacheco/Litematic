@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { parseBlockStateString } from '../../src/lib/parsers/blockStateString'
 import { createList, NbtType, type NbtCompound, type NbtValue } from '../../src/lib/types/nbt'
-import { message, signPlacement, signTextColor, signTextOf } from '../../src/lib/viewer/signText'
+import {
+  message,
+  signOutlineColor,
+  signPlacement,
+  signTextColor,
+  signTextOf,
+} from '../../src/lib/viewer/signText'
+import { tileLayout } from '../../src/lib/viewer/signTextMeshes'
 
 const compound = (entries: [string, NbtValue][]): NbtCompound => new Map(entries)
 const strings = (items: NbtValue[]) => createList(NbtType.String, items)
@@ -131,5 +138,45 @@ describe('signTextColor', () => {
     expect(signTextColor({ lines: [], color: 'red', glowing: true })).toBe('rgb(255 0 0)')
     expect(signTextColor({ lines: [], color: 'red', glowing: false })).toBe('rgb(102 0 0)')
     expect(signTextColor({ lines: [], color: 'black', glowing: false })).toBe('rgb(0 0 0)')
+  })
+
+  it('outlines glowing text in the darker color, black in cream', () => {
+    expect(signOutlineColor({ lines: [], color: 'red', glowing: true })).toBe('rgb(102 0 0)')
+    expect(signOutlineColor({ lines: [], color: 'black', glowing: true })).toBe('rgb(240 235 204)')
+  })
+})
+
+describe('tileLayout', () => {
+  const layout = (text: string, special = false) =>
+    tileLayout(signPlacement(parseBlockStateString(text)!, special)!)
+
+  it('maps the game text scale onto the tile, with square font pixels on the board', () => {
+    // A standing sign board is 1 × 0.5 blocks at 96 font px per block: 96 × 48 px on 256 × 128.
+    for (const [text, special] of [
+      ['minecraft:oak_sign[rotation=0]', false],
+      ['minecraft:oak_sign[rotation=0]', true],
+      ['minecraft:oak_wall_sign[facing=north]', false],
+    ] as const) {
+      const l = layout(text, special)
+      expect(l.kx).toBeCloseTo(256 / 96)
+      expect(l.ky).toBeCloseTo(256 / 96)
+    }
+    // Hanging: 14 × 10 px board, text at 0.9 / 64 block per font px.
+    const hanging = layout('minecraft:oak_hanging_sign[attached=true,rotation=0]')
+    expect(hanging.kx).toBeCloseTo(256 / ((14 / 16) * (64 / 0.9)))
+    expect(hanging.ky).toBeCloseTo(128 / ((10 / 16) * (64 / 0.9)))
+  })
+
+  it('fits four lines of the widest text the game allows', () => {
+    for (const text of [
+      'minecraft:oak_sign[rotation=0]',
+      'minecraft:oak_wall_sign[facing=north]',
+      'minecraft:oak_hanging_sign[attached=false,rotation=0]',
+      'minecraft:oak_wall_hanging_sign[facing=north]',
+    ]) {
+      const l = layout(text)
+      expect(l.maxWidth * l.kx, text).toBeLessThanOrEqual(256)
+      expect(4 * l.lineHeight * l.ky, text).toBeLessThanOrEqual(128)
+    }
   })
 })

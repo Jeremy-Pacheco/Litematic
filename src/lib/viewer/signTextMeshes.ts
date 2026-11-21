@@ -7,12 +7,16 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  NearestFilter,
   SRGBColorSpace,
   Vector3,
   type Plane,
 } from 'three'
+import { layoutLine, type SignFont } from '../models/signFont'
 import { blockIndex, type Structure, type Vec3 } from '../types/structure'
 import {
+  SIGN_TEXT,
+  signOutlineColor,
   signPlacement,
   signTextColor,
   signTextOf,
@@ -26,6 +30,10 @@ import {
  * of the board, placed with the same transform as the board that was drawn.
  * One mesh and one texture per page, so hundreds of signs cost a few draw
  * calls. The materials share the layer clipping planes.
+ *
+ * With the game's font (`SignFont`) the text is drawn pixel by pixel at the
+ * game's text scale; without it, or for a line with characters the font
+ * lacks, with a system font.
  */
 
 const TILE_W = 256
@@ -44,22 +52,36 @@ export interface SignTextResult {
   skipped: number
 }
 
+/** How a side's text maps onto its tile. */
+interface TileLayout {
+  /** Canvas pixels per font pixel, across and down (they differ when the board is not 2 : 1). */
+  kx: number
+  ky: number
+  lineHeight: number
+  maxWidth: number
+}
+
 interface Face {
   side: SignSide
   corners: [number, number, number][]
-  /** Width / height of the board, to draw the text without stretching it. */
-  aspect: number
+  layout: TileLayout
 }
+
+/** Font pixels from the top of a line to the baseline (the default font's ascent). */
+const BASELINE = 7
+/** Room above and below a line in the scratch canvas, for accents and descenders. */
+const LINE_MARGIN = 4
 
 /**
  * `specialModels[i]`: palette state `i` was drawn by Deepslate's special
  * renderers (see `BakedState.specialModel`), which places sign boards
- * differently from the game's models.
+ * differently from the game's models. `font`: the game's font, if loaded.
  */
 export function buildSignTextMeshes(
   structure: Pick<Structure, 'size' | 'palette' | 'blocks' | 'blockEntities'>,
   clippingPlanes: Plane[],
   specialModels: readonly boolean[] = [],
+  font: SignFont | null = null,
 ): SignTextResult {
   const faces: Face[] = []
   for (const entity of structure.blockEntities) {
@@ -72,24 +94,36 @@ export function buildSignTextMeshes(
     const state = structure.palette[stateIndex]
     const placement = state ? signPlacement(state, specialModels[stateIndex] ?? false) : null
     if (!placement) continue
-    const { board } = placement
-    const aspect = (board.x1 - board.x0) / (board.y1 - board.y0)
+    const layout = tileLayout(placement)
     for (const [side, back] of [
       [text.front, false],
       [text.back, true],
     ] as const) {
-      if (side) faces.push({ side, corners: signTextCorners(entity.pos, placement, back), aspect })
+      if (side) faces.push({ side, corners: signTextCorners(entity.pos, placement, back), layout })
     }
   }
 
   const drawn = Math.min(faces.length, MAX_SIGN_SIDES)
   const meshes: Mesh[] = []
+  const glyphs = drawn > 0 && font ? new GlyphPainter(font) : null
   for (let start = 0; start < drawn; start += TILES_PER_PAGE) {
-    meshes.push(
-      pageMesh(faces.slice(start, Math.min(drawn, start + TILES_PER_PAGE)), clippingPlanes),
-    )
+    const page = faces.slice(start, Math.min(drawn, start + TILES_PER_PAGE))
+    meshes.push(pageMesh(page, clippingPlanes, glyphs))
   }
   return { meshes, drawn, skipped: faces.length - drawn }
+}
+
+/** The tile covers the whole board: font pixels follow from the game's text scale. */
+export function tileLayout({ kind, board }: SignPlacement): TileLayout {
+  const { pxPerBlock, lineHeight, maxWidth } = SIGN_TEXT[kind]
+  const widthBlocks = ((board.x1 - board.x0) * board.scale) / 16
+  const heightBlocks = ((board.y1 - board.y0) * board.scale) / 16
+  return {
+    kx: TILE_W / (widthBlocks * pxPerBlock),
+    ky: TILE_H / (heightBlocks * pxPerBlock),
+    lineHeight,
+    maxWidth,
+  }
 }
 
 /**
@@ -128,7 +162,7 @@ export function signTextCorners(
   })
 }
 
-function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
+function pageMesh(faces: Face[], clippingPlanes: Plane[], glyphs: GlyphPainter | null): Mesh {
   const canvas = document.createElement('canvas')
   canvas.width = PAGE
   canvas.height = PAGE
@@ -143,7 +177,7 @@ function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
   faces.forEach((face, i) => {
     const tx = (i % columns) * TILE_W
     const ty = Math.floor(i / columns) * TILE_H
-    drawTile(ctx, face.side, tx, ty, TILE_W / TILE_H / face.aspect)
+    drawTile(ctx, face, tx, ty, glyphs)
     face.corners.forEach((corner, k) => positions.set(corner, (i * 4 + k) * 3))
     // v = 0 at the top of the canvas (the texture is not flipped).
     const u0 = tx / PAGE
@@ -159,6 +193,8 @@ function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
   texture.flipY = false
   texture.colorSpace = SRGBColorSpace
   texture.minFilter = LinearFilter
+  // Up close, the game's font keeps its square pixels.
+  if (glyphs) texture.magFilter = NearestFilter
   texture.generateMipmaps = false
 
   const geometry = new BufferGeometry()
@@ -182,40 +218,155 @@ function pageMesh(faces: Face[], clippingPlanes: Plane[]): Mesh {
 }
 
 /**
- * Four centred lines, shrunk horizontally when a line is too wide.
- * `stretch`: horizontal scale that makes up for a board narrower than the
- * 2 : 1 tile (hanging signs), so the letters keep their shape.
+ * Four lines centred on the tile, at the game's line height; a line wider
+ * than the game allows is shrunk horizontally.
  */
 function drawTile(
   ctx: CanvasRenderingContext2D,
-  side: SignSide,
+  { side, layout }: Face,
   x: number,
   y: number,
-  stretch: number,
+  glyphs: GlyphPainter | null,
 ): void {
-  const lineHeight = TILE_H / 4.4
-  ctx.save()
-  ctx.font = `600 ${Math.round(lineHeight * 0.8)}px system-ui, sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  const color = signTextColor(side)
+  const { ky, lineHeight } = layout
+  const top = y + (TILE_H - 4 * lineHeight * ky) / 2
   side.lines.forEach((line, i) => {
     if (!line) return
-    const cy = y + TILE_H * 0.08 + lineHeight * (i + 0.5)
-    const width = ctx.measureText(line).width * stretch
-    const max = TILE_W * 0.92
-    ctx.save()
-    ctx.translate(x + TILE_W / 2, cy)
-    ctx.scale(width > max ? (stretch * max) / width : stretch, 1)
-    if (side.glowing) {
-      // Glowing text: an outline in a darker shade, as in the game.
-      ctx.lineWidth = 4
-      ctx.strokeStyle = 'rgb(0 0 0 / 0.55)'
-      ctx.strokeText(line, 0, 0)
+    const lineTop = top + i * lineHeight * ky
+    if (!glyphs?.draw(ctx, line, side, layout, x + TILE_W / 2, lineTop)) {
+      drawSystemLine(ctx, line, side, layout, x + TILE_W / 2, lineTop)
     }
-    ctx.fillStyle = color
-    ctx.fillText(line, 0, 0)
-    ctx.restore()
   })
+}
+
+/** A line in a system font, for when the game's font is missing or lacks a character. */
+function drawSystemLine(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  side: SignSide,
+  { kx, ky, lineHeight, maxWidth }: TileLayout,
+  centerX: number,
+  lineTop: number,
+): void {
+  ctx.save()
+  // Letters about as tall as the game's (8 of the 10 pixels of a line).
+  ctx.font = `600 ${Math.round(lineHeight * 0.8 * ky)}px system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  // Font pixels are kx × ky canvas pixels: scale x so letters keep their shape.
+  const stretch = kx / ky
+  const width = ctx.measureText(line).width * stretch
+  const max = maxWidth * kx
+  ctx.translate(centerX, lineTop + (lineHeight * ky) / 2)
+  ctx.scale(width > max ? (stretch * max) / width : stretch, 1)
+  if (side.glowing) {
+    ctx.lineWidth = 2 * ky
+    ctx.strokeStyle = signOutlineColor(side)
+    ctx.strokeText(line, 0, 0)
+  }
+  ctx.fillStyle = signTextColor(side)
+  ctx.fillText(line, 0, 0)
   ctx.restore()
 }
+
+/**
+ * Draws lines with the game's bitmap font: the glyphs of a line are copied
+ * at 1 font pixel each into a scratch canvas, tinted, and scaled onto the
+ * tile without smoothing. Glowing text gets the game's outline (the line in
+ * the darker color, one font pixel around it).
+ */
+class GlyphPainter {
+  readonly #font: SignFont
+  readonly #sheets: (HTMLCanvasElement | null)[]
+  readonly #mask = document.createElement('canvas')
+  readonly #tinted = document.createElement('canvas')
+
+  constructor(font: SignFont) {
+    this.#font = font
+    this.#sheets = font.sheets.map((sheet) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = sheet.width
+      canvas.height = sheet.height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return null
+      ctx.putImageData(new ImageData(new Uint8ClampedArray(sheet.pixels), sheet.width), 0, 0)
+      return canvas
+    })
+  }
+
+  /** Draws the line, or returns false when the font cannot (missing characters). */
+  draw(
+    ctx: CanvasRenderingContext2D,
+    line: string,
+    side: SignSide,
+    { kx, ky, lineHeight, maxWidth }: TileLayout,
+    centerX: number,
+    lineTop: number,
+  ): boolean {
+    const layout = layoutLine(line, this.#font)
+    if (!layout || layout.width === 0) return layout !== null
+    const mask = this.#mask
+    mask.width = layout.width + 2
+    mask.height = lineHeight + 2 * LINE_MARGIN
+    const m = mask.getContext('2d')
+    if (!m) return false
+    m.imageSmoothingEnabled = false
+    for (const { glyph, x } of layout.glyphs) {
+      const sheet = this.#sheets[glyph.sheet]
+      if (!sheet || glyph.width === 0) continue
+      m.drawImage(
+        sheet,
+        glyph.x,
+        glyph.y,
+        glyph.width,
+        glyph.height,
+        1 + x,
+        LINE_MARGIN + BASELINE - glyph.ascent,
+        glyph.width * glyph.scale,
+        glyph.height * glyph.scale,
+      )
+    }
+    // The game never draws a line wider than its limit: shrink it if needed.
+    const fit = layout.width > maxWidth ? maxWidth / layout.width : 1
+    const w = mask.width * kx * fit
+    const h = mask.height * ky
+    const left = centerX - w / 2
+    const topY = lineTop - LINE_MARGIN * ky
+    ctx.save()
+    ctx.imageSmoothingEnabled = false
+    if (side.glowing) {
+      const outline = this.#tint(signOutlineColor(side))
+      for (const [dx, dy] of OUTLINE_OFFSETS) {
+        ctx.drawImage(outline, left + dx * kx * fit, topY + dy * ky, w, h)
+      }
+    }
+    ctx.drawImage(this.#tint(signTextColor(side)), left, topY, w, h)
+    ctx.restore()
+    return true
+  }
+
+  /** The current mask in one color. */
+  #tint(color: string): HTMLCanvasElement {
+    const out = this.#tinted
+    out.width = this.#mask.width
+    out.height = this.#mask.height
+    const t = out.getContext('2d')!
+    t.drawImage(this.#mask, 0, 0)
+    t.globalCompositeOperation = 'source-in'
+    t.fillStyle = color
+    t.fillRect(0, 0, out.width, out.height)
+    return out
+  }
+}
+
+/** The eight neighbours of a pixel, for the glow outline. */
+const OUTLINE_OFFSETS = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+] as const

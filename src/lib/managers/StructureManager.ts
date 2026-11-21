@@ -36,6 +36,11 @@ export interface ShowResult {
   textureScale: number
   /** Sign sides with text left undrawn by the limit (`MAX_SIGN_SIDES`). */
   signsSkipped: number
+  /**
+   * Sign text was drawn with a system font because the loaded game files have
+   * no font (extracted before the viewer read fonts: loading the jar again fixes it).
+   */
+  signFontMissing: boolean
 }
 
 /** Plane constant that leaves everything visible. */
@@ -108,6 +113,7 @@ export class StructureManager {
       { ...structure, palette: variants.palette, blocks: variants.blocks },
       this.#planes,
       models.states.map((state) => state.specialModel),
+      models.signFont,
     )
     for (const mesh of signs.meshes) this.#scene.content.add(mesh)
     if (signs.meshes.length > 0) this.#scene.requestRender()
@@ -118,6 +124,7 @@ export class StructureManager {
       bakeMs: models.durationMs,
       textureScale: models.textureScale,
       signsSkipped: signs.skipped,
+      signFontMissing: signs.drawn > 0 && models.signFont === null,
     }
   }
 
