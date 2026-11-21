@@ -9,6 +9,7 @@ import {
   emptyWarnings,
   finishStructure,
   PaletteBuilder,
+  type ParseProgressCallback,
 } from '../structureBuilder'
 import { bitsForPalette, PackedReader, requiredLongs } from './bitArray'
 
@@ -24,8 +25,6 @@ const DATA_VERSION_FLATTENING = 1631
 const FORMAT_VERSION_FLATTENING = 5
 /** Blocks decoded between two progress reports. */
 const PROGRESS_STEP = 1 << 20
-
-export type ParseProgressCallback = (fraction: number) => void
 
 interface RawRegion {
   name: string

@@ -16,6 +16,9 @@ import { StructureReadError } from './errors'
  * this is 1 GiB for the block array alone; beyond that a browser tab is likely
  * to run out of memory.
  */
+/** Reports parsing progress as a fraction from 0 to 1. */
+export type ParseProgressCallback = (fraction: number) => void
+
 export const MAX_STRUCTURE_VOLUME = 512 * 1024 * 1024
 
 /** Checks a structure size before anything is allocated for it. */
