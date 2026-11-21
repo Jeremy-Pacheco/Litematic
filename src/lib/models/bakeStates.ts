@@ -6,7 +6,9 @@ import {
   type Quad,
   type TextureAtlasProvider,
 } from 'deepslate/render'
+import { NbtCompound, NbtList, NbtString } from 'deepslate/nbt'
 import { isAirId } from '../parsers/blockState'
+import type { BlockRenderData } from './blockEntityRender'
 import type { BlockState } from '../types/structure'
 import type { GameResources } from './gameResources'
 import {
@@ -57,6 +59,7 @@ const EPS = 1e-4
 export function collectTextureIds(
   palette: readonly BlockState[],
   resources: GameResources,
+  data: readonly (BlockRenderData | null)[] = [],
 ): Set<string> {
   const ids = new Set<string>([MISSING_TEXTURE])
   const recorder: TextureAtlasProvider = {
@@ -68,7 +71,7 @@ export function collectTextureIds(
       return [0, 0, 1, 1]
     },
   }
-  for (const state of palette) meshOf(state, resources, recorder)
+  palette.forEach((state, i) => meshOf(state, resources, recorder, {}, data[i] ?? null))
   return ids
 }
 
@@ -76,10 +79,11 @@ export function bakePalette(
   palette: readonly BlockState[],
   resources: GameResources,
   atlas: BakeAtlas,
+  data: readonly (BlockRenderData | null)[] = [],
 ): BakeResult {
   const missing = new Set<string>()
-  const states = palette.map((state) => {
-    const baked = bakeState(state, resources, atlas)
+  const states = palette.map((state, i) => {
+    const baked = bakeState(state, resources, atlas, data[i] ?? null)
     if (baked.missing) missing.add(state.name)
     return baked
   })
@@ -90,9 +94,10 @@ export function bakeState(
   state: BlockState,
   resources: GameResources,
   atlas: BakeAtlas,
+  data: BlockRenderData | null = null,
 ): BakedState {
   if (isAirId(state.name)) return emptyState()
-  const result = meshOf(state, resources, atlas)
+  const result = meshOf(state, resources, atlas, {}, data)
   const quads = result ? result.quads : missingCube(atlas)
   const fluid = fluidOf(state)
   // Fluid blocks also get their shape with the same fluid above: full height
@@ -212,6 +217,7 @@ function meshOf(
   resources: GameResources,
   atlas: TextureAtlasProvider,
   cull: Partial<Record<(typeof FACES)[number], boolean>> = {},
+  data: BlockRenderData | null = null,
 ): Mesh | null {
   const name = Identifier.parse(state.name)
   const dsState = new DsBlockState(name, { ...state.properties })
@@ -223,7 +229,7 @@ function meshOf(
       mesh.merge(definition.getMesh(name, { ...state.properties }, atlas, resources, cull))
       found = true
     }
-    const special = SpecialRenderers.getBlockMesh(dsState, undefined, atlas, cull)
+    const special = SpecialRenderers.getBlockMesh(dsState, toDeepslateNbt(data), atlas, cull)
     if (!special.isEmpty()) {
       mesh.merge(special)
       found = true
@@ -233,6 +239,21 @@ function meshOf(
     return null
   }
   return found ? mesh : null
+}
+
+/** Render data in the NBT shape Deepslate's special renderers read. */
+function toDeepslateNbt(data: BlockRenderData | null): NbtCompound | undefined {
+  if (!data) return undefined
+  const patterns = data.patterns.map(
+    ({ pattern, color }) =>
+      new NbtCompound(
+        new Map([
+          ['pattern', new NbtString(`minecraft:${pattern}`)],
+          ['color', new NbtString(color)],
+        ]),
+      ),
+  )
+  return new NbtCompound(new Map([['patterns', new NbtList(patterns)]]))
 }
 
 /** Side of the block the quad lies on (all vertices on that boundary plane), or null. */

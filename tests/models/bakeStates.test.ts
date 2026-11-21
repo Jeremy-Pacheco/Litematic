@@ -163,6 +163,24 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
     }
   })
 
+  it('draws banner patterns from the block entity data', () => {
+    const banner = state('minecraft:white_banner[rotation=0]')
+    const plain = bakeState(banner, resources, fakeAtlas())
+    const data = {
+      patterns: [
+        { pattern: 'stripe_top', color: 'red' },
+        { pattern: 'creeper', color: 'black' },
+      ],
+    }
+    const patterned = bakeState(banner, resources, fakeAtlas(), data)
+    const quads = (b: typeof plain) =>
+      b.geometry.flat().reduce((sum, g) => sum + (g?.quadCount ?? 0), 0)
+    expect(quads(patterned)).toBeGreaterThan(quads(plain))
+    const ids = collectTextureIds([banner], resources, [data])
+    expect(ids.has('minecraft:entity/banner/stripe_top')).toBe(true)
+    expect(ids.has('minecraft:entity/banner/creeper')).toBe(true)
+  })
+
   it('bakes a full-height shape for fluids and marks what holds water', () => {
     const water = bakeState(state('minecraft:water[level=0]'), resources, fakeAtlas())
     expect(water.fluid).toBe(FLUID_WATER)

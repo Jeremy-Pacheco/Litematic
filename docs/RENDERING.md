@@ -63,8 +63,19 @@ Minecraft no guarda la capa en los recursos, así que se deduce del **canal alfa
 ### Bloques especiales
 
 Los bloques que Minecraft dibuja como entidades no tienen modelo JSON y se generan con los
-`SpecialRenderers` de Deepslate: cofres, carteles (sin texto), camas, estandartes (color base, sin
-patrones todavía), cabezas, cajas de shulker, campanas, macetas decoradas y fluidos.
+`SpecialRenderers` de Deepslate: cofres, carteles (sin texto), camas, estandartes, cabezas, cajas
+de shulker, campanas, macetas decoradas y fluidos.
+
+### Estandartes con dibujos (`models/blockEntityRender.ts`)
+
+Los dibujos de un estandarte están en su block entity, no en su estado, y el bake es por estado.
+Por eso cada combinación distinta de estado y dibujos recibe una **entrada extra de paleta solo
+para dibujar**, y esas posiciones se cambian en una copia del array de bloques que recibe el
+mesher. El array, la paleta y los recuentos de la estructura no cambian: materiales, inspector y
+selección siguen igual. Se leen los dos formatos: `patterns` (1.20.5+, id o definición en línea
+con `asset_id`) y `Patterns` (anterior, códigos como `bs` y colores numéricos), también dentro
+de `Data` en Sponge v3. Los ids se validan (segmentos `[a-z0-9_]`, sin puntos) y se admiten como
+mucho 16 capas por estandarte.
 
 ### Bloques o texturas que faltan
 

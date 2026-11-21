@@ -1,6 +1,7 @@
 import type { BlockState } from '../types/structure'
 import { buildAtlas } from './atlas'
 import { bakePalette, collectTextureIds, type BakedState } from './bakeStates'
+import type { BlockRenderData } from './blockEntityRender'
 import { GameResources } from './gameResources'
 
 /** Everything the viewer needs to draw a structure's palette. */
@@ -24,11 +25,12 @@ export interface BakedModels {
 export async function bakeModels(
   palette: readonly BlockState[],
   files: ReadonlyMap<string, Uint8Array>,
+  data: readonly (BlockRenderData | null)[] = [],
 ): Promise<BakedModels> {
   const start = performance.now()
   const resources = new GameResources(files)
-  const atlas = await buildAtlas(collectTextureIds(palette, resources), resources)
-  const { states, missingBlocks } = bakePalette(palette, resources, atlas)
+  const atlas = await buildAtlas(collectTextureIds(palette, resources, data), resources)
+  const { states, missingBlocks } = bakePalette(palette, resources, atlas, data)
   return {
     states,
     atlas: { size: atlas.size, pixels: atlas.pixels },
