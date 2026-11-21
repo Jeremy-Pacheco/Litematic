@@ -4,6 +4,7 @@
   import { DEFAULT_MAX_DECOMPRESSED_BYTES } from '../../parsers/nbt/decompress'
   import { MAX_STRUCTURE_VOLUME } from '../../parsers/structureBuilder'
   import { buildMaterialList } from '../../materials/materialList'
+  import { assets } from '../../stores/assets.svelte'
   import { importState } from '../../stores/importState.svelte'
   import { materialProgress, materialsStorageKey } from '../../stores/materials.svelte'
   import MaterialList from '../materials/MaterialList.svelte'
@@ -115,6 +116,14 @@
     </div>
   {:else}
     <DropZone accept={STRUCTURE_ACCEPT} {dragging} onfiles={handleFiles} />
+    {#if assets.status.kind === 'none'}
+      <p class="assets-hint">
+        {i18n.t('assets.hint')}
+        <button type="button" class="link" onclick={() => (assets.dialogOpen = true)}>
+          {i18n.t('assets.open')}
+        </button>
+      </p>
+    {/if}
   {/if}
   <p class="note">{i18n.t('import.localNote')}</p>
 </div>
@@ -160,6 +169,24 @@
     .result {
       grid-template-columns: minmax(0, 1fr);
     }
+  }
+
+  .assets-hint {
+    max-width: 60ch;
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-primary);
+    font-size: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
   }
 
   .note {

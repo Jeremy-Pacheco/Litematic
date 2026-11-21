@@ -2,6 +2,7 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import { itemDisplayName, type Material } from '../../materials/materialList'
   import { stackBreakdown, stackSize } from '../../materials/stackSizes'
+  import { assets } from '../../stores/assets.svelte'
   import { materialProgress, missingCount } from '../../stores/materials.svelte'
   import { formatCount } from '../../utils/format'
 
@@ -12,7 +13,7 @@
   let { material }: Props = $props()
 
   const count = (value: number) => formatCount(value, i18n.locale)
-  const name = $derived(itemDisplayName(material.item))
+  const name = $derived(itemDisplayName(material.item, assets.lang))
   const owned = $derived(materialProgress.get(material.item))
   const missing = $derived(missingCount(material.required, owned))
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
   import { itemDisplayName, type Material, type MaterialList } from '../../materials/materialList'
+  import { assets } from '../../stores/assets.svelte'
   import { materialProgress, missingCount } from '../../stores/materials.svelte'
   import { formatCount } from '../../utils/format'
   import Button from '../controls/Button.svelte'
@@ -36,10 +37,16 @@
       if (filter === 'pending' && missing(m) === 0) return false
       if (filter === 'done' && missing(m) > 0) return false
       if (!needle) return true
-      return itemDisplayName(m.item).toLowerCase().includes(needle) || m.item.includes(needle)
+      return (
+        itemDisplayName(m.item, assets.lang).toLowerCase().includes(needle) ||
+        m.item.includes(needle)
+      )
     })
     const byName = (a: Material, b: Material) =>
-      itemDisplayName(a.item).localeCompare(itemDisplayName(b.item), i18n.locale)
+      itemDisplayName(a.item, assets.lang).localeCompare(
+        itemDisplayName(b.item, assets.lang),
+        i18n.locale,
+      )
     if (sort === 'name') return rows.sort(byName)
     if (sort === 'missing') return rows.sort((a, b) => missing(b) - missing(a) || byName(a, b))
     return rows.sort((a, b) => b.required - a.required || byName(a, b))
@@ -148,7 +155,16 @@
     </div>
   {/if}
 
-  <p class="names-note">{i18n.t('materials.namesNote')}</p>
+  {#if assets.lang}
+    <p class="names-note">{i18n.t('materials.namesOfficial')}</p>
+  {:else}
+    <p class="names-note">
+      {i18n.t('materials.namesNote')}
+      <button type="button" class="link" onclick={() => (assets.dialogOpen = true)}>
+        {i18n.t('assets.open')}
+      </button>
+    </p>
+  {/if}
 
   {#if list.special.length > 0}
     <details class="special">
@@ -160,7 +176,9 @@
       <ul>
         {#each list.special as material (material.item)}
           <li>
-            <span class="special-name" title={material.item}>{itemDisplayName(material.item)}</span>
+            <span class="special-name" title={material.item}>
+              {itemDisplayName(material.item, assets.lang)}
+            </span>
             <span class="kind">
               {i18n.t(
                 `materials.special.${material.category === 'fluid' ? 'fluid' : 'unobtainable'}`,
@@ -243,6 +261,18 @@
   .names-note {
     font-size: var(--text-xs);
     color: var(--color-text-2);
+  }
+
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-primary);
+    font-size: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
   }
 
   .toolbar {

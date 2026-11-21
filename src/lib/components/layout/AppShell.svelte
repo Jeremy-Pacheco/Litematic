@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import AssetsDialog from '../dialogs/AssetsDialog.svelte'
   import Toaster from '../feedback/Toaster.svelte'
   import TopBar from './TopBar.svelte'
 
@@ -16,6 +17,7 @@
     {@render children()}
   </main>
   <Toaster />
+  <AssetsDialog />
 </div>
 
 <style>

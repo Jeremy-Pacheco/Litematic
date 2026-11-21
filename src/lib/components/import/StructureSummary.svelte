@@ -4,6 +4,7 @@
   import type { Structure } from '../../types/structure'
   import { formatBytes, formatCount } from '../../utils/format'
   import { structureTitle } from '../../utils/structureTitle'
+  import { assets } from '../../stores/assets.svelte'
   import FilePickerButton from './FilePickerButton.svelte'
 
   interface Props {
@@ -41,6 +42,17 @@
     if (w.unknownLegacyBlocks > 0)
       list.push(i18n.t('warnings.unknownLegacy', { count: count(w.unknownLegacyBlocks) }))
     if (w.approximateLegacyStates) list.push(i18n.t('warnings.approximateLegacy'))
+    // Blocks added after the loaded game version have no model or texture.
+    const game = assets.status.kind === 'ready' ? assets.status.meta.version : null
+    if (game && structure.dataVersion !== null && structure.dataVersion > game.dataVersion) {
+      list.push(
+        i18n.t('warnings.newerThanAssets', {
+          version: game.id,
+          dataVersion: structure.dataVersion,
+          assetsDataVersion: game.dataVersion,
+        }),
+      )
+    }
     return list
   })
 </script>
