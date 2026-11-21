@@ -28,6 +28,8 @@ export interface ShowResult {
   stats: MesherStats
   missingBlocks: string[]
   bakeMs: number
+  /** 1, or the divisor applied to textures too large for the atlas. */
+  textureScale: number
 }
 
 /** Plane constant that leaves everything visible. */
@@ -92,7 +94,12 @@ export class StructureManager {
 
     const stats = await this.#mesh(structure, models, onProgress)
     this.#updateCaps()
-    return { stats, missingBlocks: models.missingBlocks, bakeMs: models.durationMs }
+    return {
+      stats,
+      missingBlocks: models.missingBlocks,
+      bakeMs: models.durationMs,
+      textureScale: models.textureScale,
+    }
   }
 
   /**

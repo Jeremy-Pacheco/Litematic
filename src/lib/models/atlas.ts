@@ -1,6 +1,6 @@
 import { Identifier } from 'deepslate/core'
 import type { UV } from 'deepslate/render'
-import { packAtlas, type Placement } from './atlasPacking'
+import { packAtlas, type AtlasLayout, type Placement, type TextureSize } from './atlasPacking'
 import { MISSING_TEXTURE, type BakeAtlas } from './bakeStates'
 import type { GameResources } from './gameResources'
 import { classifyAlpha, RenderLayer } from './renderLayer'
@@ -23,6 +23,11 @@ export interface BuiltAtlas extends BakeAtlas {
   pixels: Uint8ClampedArray
   /** Texture ids that were referenced but not found in the game files. */
   missingTextures: string[]
+  /**
+   * Resolution divisor: 1 normally; 2, 4… when high-resolution textures (from
+   * a resource pack) had to be reduced to fit in the largest atlas.
+   */
+  scale: number
 }
 
 export async function buildAtlas(
@@ -56,14 +61,16 @@ export async function buildAtlas(
   // Every texture gets a 1-pixel gutter repeating its edge pixels, so
   // sampling slightly outside a face's region (unavoidable at a distance with
   // nearest filtering) reads the same texture instead of its neighbour.
-  const layout = packAtlas([
+  // Textures too large to fit together are halved until they do.
+  const fitted = fitAtlas((scale) => [
     { id: MISSING_TEXTURE, width: 16 + 2 * GUTTER, height: 16 + 2 * GUTTER },
     ...[...bitmaps].map(([id, bitmap]) => ({
       id,
-      width: bitmap.width + 2 * GUTTER,
-      height: frameHeight(id, bitmap) + 2 * GUTTER,
+      width: reduce(bitmap.width, scale) + 2 * GUTTER,
+      height: reduce(frameHeight(id, bitmap), scale) + 2 * GUTTER,
     })),
   ])
+  const { layout, scale } = fitted
   const inner = new Map(
     [...layout.placements].map(([id, p]) => [
       id,
@@ -84,7 +91,9 @@ export async function buildAtlas(
   drawMissing(ctx, inner.get(MISSING_TEXTURE)!)
   for (const [id, bitmap] of bitmaps) {
     const p = inner.get(id)!
-    ctx.drawImage(bitmap, 0, 0, p.width, p.height, p.x, p.y, p.width, p.height)
+    // Source size in the original texture (the first frame for animations).
+    const sourceHeight = frameHeight(id, bitmap)
+    ctx.drawImage(bitmap, 0, 0, bitmap.width, sourceHeight, p.x, p.y, p.width, p.height)
     bitmap.close()
   }
   for (const p of inner.values()) extrudeEdges(ctx, canvas, p)
@@ -110,6 +119,7 @@ export async function buildAtlas(
     size: layout.size,
     pixels,
     missingTextures: missingTextures.sort(),
+    scale,
     getTextureAtlas: () => new ImageData(pixels, layout.size, layout.size),
     getTextureUV(id: Identifier) {
       const key = id.toString()
@@ -127,6 +137,25 @@ export async function buildAtlas(
       return RenderLayer.Opaque
     },
   }
+}
+
+/** Largest resolution divisor tried before giving up. */
+const MAX_SCALE = 16
+
+/** Packs the textures, halving their resolution until they fit (or failing). */
+function fitAtlas(sizes: (scale: number) => TextureSize[]): { layout: AtlasLayout; scale: number } {
+  for (let scale = 1; ; scale *= 2) {
+    try {
+      return { layout: packAtlas(sizes(scale)), scale }
+    } catch (error) {
+      if (!(error instanceof RangeError) || scale >= MAX_SCALE) throw error
+    }
+  }
+}
+
+/** A texture side divided by `scale`, never below 1 pixel. */
+function reduce(side: number, scale: number): number {
+  return Math.max(1, Math.round(side / scale))
 }
 
 /** Width of the border around each texture, in pixels. */
