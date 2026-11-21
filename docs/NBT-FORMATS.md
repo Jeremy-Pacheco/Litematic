@@ -214,6 +214,22 @@ Cada `id:meta` se traduce a un blockstate moderno con la tabla `src/lib/data/leg
 - Se regenera con `node scripts/update-legacy-blocks.mjs`, fijado a ese commit.
 - Búsqueda: `id:meta` → si no existe, `id:0` (variante por defecto) → si tampoco, aire y aviso
   `unknownLegacyBlocks`.
+- **Renombres posteriores a la 1.13** (`LEGACY_RENAMES` en `parsers/mcedit/legacyBlocks.ts`): la
+  tabla da nombres de la 1.13 y los recursos actuales solo tienen los nuevos. Se mantienen las
+  propiedades.
+
+  | 1.13         | Actual              | Desde  |
+  | ------------ | ------------------- | ------ |
+  | `sign`       | `oak_sign`          | 1.14   |
+  | `wall_sign`  | `oak_wall_sign`     | 1.14   |
+  | `stone_slab` | `smooth_stone_slab` | 1.14   |
+  | `grass_path` | `dirt_path`         | 1.17   |
+  | `grass`      | `short_grass`       | 1.20.3 |
+
+  `stone_slab` es un cambio de significado: en la 1.13 era la losa de piedra lisa (la de la
+  1.12), y desde la 1.14 `stone_slab` es otra losa, de piedra normal. Un test comprueba con el
+  `client.jar` local (26.3) que todos los bloques que da la tabla tienen blockstate.
+
 - Cada combinación `id:meta` se resuelve **una sola vez**; después se usa una tabla de 65 536
   enteros, así que el coste por bloque es constante.
 - La tabla se carga **bajo demanda** con `import()` dentro del worker: es un fragmento aparte
@@ -278,9 +294,10 @@ forma de la 1.16+ (la de los modelos que usa el visor):
 - **"Sólido"** también se decide por nombre. Casos límite (pistones extendidos, la parte trasera
   de una escalera) no conectan aunque en el juego sí lo hagan.
 - **IDs de mods** (`SchematicaMapping`) no están en la tabla: se leen como aire con aviso.
-- **Nombres de la 1.13 que cambiaron después**: la tabla da nombres de la 1.13 (`sign`,
-  `wall_sign`, `grass`, `grass_path`…) que en versiones posteriores se renombraron (`oak_sign`,
-  `short_grass`, `dirt_path`…) y que los recursos actuales no tienen. Pendiente.
+- **Renombres en `.litematic` y `.schem` de la 1.13**: esos archivos guardan los mismos nombres
+  antiguos (`sign`, `grass`…), pero los renombres solo se aplican a la tabla de `.schematic`.
+- **Renombres futuros**: si Minecraft vuelve a renombrar un bloque, hay que añadirlo a
+  `LEGACY_RENAMES`. El test con el `client.jar` local lo detecta.
 - La tabla traduce IDs **numéricos**. Los `.litematic` y Sponge v1 anteriores a la 1.13 guardan
   **nombres de la 1.12** (`minecraft:stone[variant=granite]`), que esta tabla no cubre; siguen
   mostrando el aviso `legacyBlockNames`.
