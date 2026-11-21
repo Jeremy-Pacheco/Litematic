@@ -11,11 +11,12 @@ src/
 │   │   ├── import/      Pantalla de importación y zona de arrastrar y soltar
 │   │   ├── feedback/    Notificaciones
 │   │   ├── viewer/      Lienzo 3D (pendiente)
-│   │   ├── materials/   Lista de materiales (pendiente)
+│   │   ├── materials/   Lista de materiales (MaterialList, MaterialRow)
 │   │   ├── layers/      Selector de capas (pendiente)
 │   │   └── dialogs/     Ventanas modales (pendiente)
 │   ├── data/            Datos generados (tabla de IDs antiguos) y sus licencias
 │   ├── i18n/            Idiomas: diccionarios y traducción
+│   ├── materials/       Cálculo de materiales: bloque → ítems, agrupado, stacks
 │   ├── styles/          Variables de diseño (tokens.css)
 │   ├── stores/          Estado global reactivo (runas de Svelte 5)
 │   ├── constants/       Constantes compartidas
@@ -75,6 +76,11 @@ docs/                    Documentación
 | `components/layout/TopBar`             | Marca, archivo seleccionado (nombre, tamaño, dimensiones), idioma y tema                  |
 | `components/import/ImportScreen`       | Orquesta la importación y traduce el resultado a notificaciones                           |
 | `components/import/*`                  | `DropZone`, `WindowDropTarget`, `FilePickerButton`, `ReadingProgress`, `StructureSummary` |
+| `materials/blockToItems.ts`            | Reglas bloque colocado → ítems necesarios                                                 |
+| `materials/materialList.ts`            | Agrupa los recuentos de la estructura por ítem; nombre provisional legible                |
+| `materials/stackSizes.ts`              | Tamaño de stack por ítem, desglose en stacks y cajas de shulker                           |
+| `stores/materials.svelte.ts`           | Cantidades que el usuario tiene, guardadas por archivo en `localStorage`                  |
+| `components/materials/*`               | `MaterialList` (búsqueda, orden, filtros, progreso, apartado especial), `MaterialRow`     |
 | `components/feedback/Toaster`          | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`                |
 | `components/controls/*`                | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher`   |
 
@@ -147,6 +153,53 @@ StructureSummary (formato, dimensiones, bloques, paleta, regiones, avisos…) + 
 
 Los tres formatos tienen parser. El de MCEdit es asíncrono: carga bajo demanda la tabla de IDs
 antiguos (`data/legacyBlocks.json`), que es un fragmento aparte del build.
+
+## Lista de materiales
+
+```text
+[worker] finishStructure ─► blockCounts (veces que se usa cada estado de la paleta)
+                                    │   misma pasada que cuenta los bloques que no son aire
+                                    ▼
+[principal] buildMaterialList(palette, blockCounts)   coste ∝ tamaño de la paleta
+                                    │   blockToItems(estado) → ítems × cantidad
+                                    ▼
+          { items (obtenibles), special (fluidos / no obtenibles), totalItems }
+                                    ▼
+MaterialList ◄── materialProgress (cantidades que el usuario tiene, por archivo)
+```
+
+### De bloque a ítem (`blockToItems`)
+
+Un bloque colocado no siempre equivale a un ítem del mismo id. Reglas, por orden:
+
+| Caso                       | Ejemplo                                                                           | Resultado                                    |
+| -------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------- |
+| Aire y partes técnicas     | `cave_air`, `piston_head`, `moving_piston`                                        | No cuentan                                   |
+| No obtenibles              | `bedrock`, portales, `fire`, `spawner`, bloques de comandos                       | Apartado especial                            |
+| Fluidos                    | `water`/`lava` fuente, `bubble_column`                                            | Cubo, apartado especial; la fluida no cuenta |
+| Dos bloques de alto, camas | puertas y flores altas (`half=upper`), camas (`part=head`)                        | Solo cuenta una mitad                        |
+| Cantidad en el estado      | losa `type=double`, `candles`, `pickles`, `eggs`, nieve `layers`, `flower_amount` | N ítems                                      |
+| Macetas y tartas con vela  | `potted_cactus`, `red_candle_cake`                                                | Dos ítems                                    |
+| Cultivos y plantas         | `wheat`, `carrots`, `cocoa`, `cave_vines`, `redstone_wire`, `tripwire`            | Semilla o ítem que lo planta                 |
+| Bloques transformados      | `farmland`, `dirt_path`, calderos llenos                                          | `dirt`, `cauldron`                           |
+| Variantes de pared         | `wall_torch`, `*_wall_sign`, `*_wall_banner`, `*_wall_skull`, `*_wall_fan`        | El ítem sin `_wall`                          |
+| Resto                      | `oak_stairs[facing=north]`                                                        | Mismo id, sin importar el estado             |
+
+Bloques de otros namespaces (mods) se cuentan con su propio id.
+
+### Cantidades del usuario
+
+- La lista muestra **lo necesario**. Opcionalmente, en «Tengo», el usuario escribe cuántos tiene y
+  la app muestra **cuántos faltan** (`max(0, necesarios − tengo)`).
+- El progreso suma `min(tengo, necesarios)` de cada material sobre el total.
+- Se guardan en `localStorage` con la clave `lv:materials:<nombre>|<tamaño>|<fecha>` del archivo,
+  así que al volver a abrirlo se recuperan. Los datos guardados se validan al leerlos.
+
+### Nombres
+
+Hasta tener los recursos de Minecraft (`feature/minecraft-assets`), el nombre es el id legible
+(`minecraft:oak_stairs` → «Oak stairs»). Los nombres oficiales traducidos y los iconos llegarán
+con el `client.jar`; no se usan iconos inventados.
 
 ## Principios
 
