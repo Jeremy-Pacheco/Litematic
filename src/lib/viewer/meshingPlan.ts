@@ -1,4 +1,4 @@
-import { SECTION_SIZE } from './mesher'
+import { SECTION_HEIGHT } from './mesher'
 
 /**
  * How the meshing of a structure is split between workers: each worker takes
@@ -29,12 +29,12 @@ export function workerCount(blocks: number, cores: number): number {
  */
 export function planMeshing(layerBlocks: ArrayLike<number>, parts: number): MeshingTask[] {
   const height = layerBlocks.length
-  const rows = Math.ceil(height / SECTION_SIZE)
+  const rows = Math.ceil(height / SECTION_HEIGHT)
   if (rows === 0) return []
   // Every row costs something even when empty (it is still scanned).
   const weights = Array.from({ length: rows }, (_, row) => {
     let blocks = 1
-    for (let y = row * SECTION_SIZE; y < Math.min(height, (row + 1) * SECTION_SIZE); y++) {
+    for (let y = row * SECTION_HEIGHT; y < Math.min(height, (row + 1) * SECTION_HEIGHT); y++) {
       blocks += layerBlocks[y]
     }
     return blocks
@@ -67,8 +67,8 @@ function task(from: number, to: number, height: number): MeshingTask {
   return {
     rows: { from, to },
     layers: {
-      from: Math.max(0, from * SECTION_SIZE - 1),
-      to: Math.min(height, to * SECTION_SIZE + 1),
+      from: Math.max(0, from * SECTION_HEIGHT - 1),
+      to: Math.min(height, to * SECTION_HEIGHT + 1),
     },
   }
 }

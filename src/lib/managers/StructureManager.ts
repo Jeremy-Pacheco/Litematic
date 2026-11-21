@@ -12,7 +12,7 @@ import type { Structure } from '../types/structure'
 import type { LayerRange } from '../viewer/layers'
 import { createAtlasTexture, createLayerMaterials, LAYER_RENDER_ORDER } from '../viewer/materials'
 import { planMeshing, workerCount } from '../viewer/meshingPlan'
-import { SECTION_SIZE, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
+import { SECTION_HEIGHT, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
 import type { MesherRequest, MesherResponse, MesherStats } from '../workers/mesherProtocol'
 import { ModelManager } from './ModelManager'
 import type { SceneManager } from './SceneManager'
@@ -255,8 +255,8 @@ export class StructureManager {
   #sectionVisible(sy: number): boolean {
     const range = this.#range
     if (!range) return true
-    const y0 = sy * SECTION_SIZE
-    return y0 <= range.max && y0 + SECTION_SIZE - 1 >= range.min
+    const y0 = sy * SECTION_HEIGHT
+    return y0 <= range.max && y0 + SECTION_HEIGHT - 1 >= range.min
   }
 
   /** Caps needed by the current range: the top of the highest visible level, the bottom of the lowest. */

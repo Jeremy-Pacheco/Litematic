@@ -9,13 +9,19 @@ import { RENDER_LAYERS } from '../models/renderLayer'
 import type { Vec3 } from '../types/structure'
 
 /**
- * Builds the geometry of a structure section by section (16×16×16 blocks):
+ * Builds the geometry of a structure section by section (32 × 16 × 32 blocks):
  * copies the baked quads of every block and drops the faces hidden by a
  * neighbor. One mesh per render layer per section keeps draw calls low and
  * lets the renderer skip off-screen sections.
  */
 
-export const SECTION_SIZE = 16
+/**
+ * Section size: 16 layers high, so the layer system can hide whole sections
+ * by rows of 16; 32 blocks wide and long, so a large structure needs a quarter
+ * of the meshes (and draw calls) of 16³ sections.
+ */
+export const SECTION_HEIGHT = 16
+export const SECTION_WIDTH = 32
 
 /** Neighbor offset of each side, in `FACES` order (up, down, north, south, east, west). */
 const OFFSETS: readonly (readonly [number, number, number])[] = [
@@ -55,7 +61,7 @@ export interface LayerMesh {
 }
 
 export interface SectionMesh {
-  /** Section coordinates (multiply by SECTION_SIZE for the block origin). */
+  /** Section coordinates (× SECTION_WIDTH in X and Z, × SECTION_HEIGHT in Y). */
   section: Vec3
   /** One entry per render layer (opaque, cutout, translucent). */
   layers: (LayerMesh | null)[]
@@ -135,24 +141,24 @@ export class Mesher {
   get sectionCounts(): Vec3 {
     const { x, y, z } = this.#size
     return {
-      x: Math.ceil(x / SECTION_SIZE),
-      y: Math.ceil(y / SECTION_SIZE),
-      z: Math.ceil(z / SECTION_SIZE),
+      x: Math.ceil(x / SECTION_WIDTH),
+      y: Math.ceil(y / SECTION_HEIGHT),
+      z: Math.ceil(z / SECTION_WIDTH),
     }
   }
 
   meshSection(sx: number, sy: number, sz: number): SectionMesh {
     const { x: X, y: Y, z: Z } = this.#size
-    const x0 = sx * SECTION_SIZE
-    const y0 = sy * SECTION_SIZE
-    const z0 = sz * SECTION_SIZE
+    const x0 = sx * SECTION_WIDTH
+    const y0 = sy * SECTION_HEIGHT
+    const z0 = sz * SECTION_WIDTH
     const box = {
       x0,
       y0,
       z0,
-      x1: Math.min(X, x0 + SECTION_SIZE),
-      y1: Math.min(Y, y0 + SECTION_SIZE),
-      z1: Math.min(Z, z0 + SECTION_SIZE),
+      x1: Math.min(X, x0 + SECTION_WIDTH),
+      y1: Math.min(Y, y0 + SECTION_HEIGHT),
+      z1: Math.min(Z, z0 + SECTION_WIDTH),
     }
     return { section: { x: sx, y: sy, z: sz }, layers: this.#meshBox(box, null) }
   }

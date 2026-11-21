@@ -92,12 +92,15 @@ describe('Mesher', () => {
     expect(mesh([2, 1, 1], [1, 2], [AIR, STONE, GLASS]).quads).toEqual([6, 5, 0])
   })
 
-  it('splits the structure into 16³ sections and offsets positions', () => {
-    const { mesher } = mesh([17, 1, 1], new Array(17).fill(1), [AIR, STONE])
-    expect(mesher.sectionCounts).toEqual({ x: 2, y: 1, z: 1 })
+  it('splits the structure into 32 × 16 × 32 sections and offsets positions', () => {
+    const { mesher } = mesh([33, 17, 1], new Array(33 * 17).fill(1), [AIR, STONE])
+    expect(mesher.sectionCounts).toEqual({ x: 2, y: 2, z: 1 })
+    // Last column of the bottom layers: its west face touches block 31.
     const second = mesher.meshSection(1, 0, 0).layers[RenderLayer.Opaque]!
-    expect(second.quadCount).toBe(5) // its west face touches block 15
-    expect(Math.min(...second.positions.filter((_, i) => i % 3 === 0))).toBe(16)
+    expect(Math.min(...second.positions.filter((_, i) => i % 3 === 0))).toBe(32)
+    // Top row starts at layer 16.
+    const top = mesher.meshSection(0, 1, 0).layers[RenderLayer.Opaque]!
+    expect(Math.min(...top.positions.filter((_, i) => i % 3 === 1))).toBe(16)
   })
 
   it('writes valid indices: two triangles per quad', () => {
