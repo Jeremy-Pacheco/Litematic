@@ -44,19 +44,44 @@ Prueba en Chrome con un `.schem` Sponge v3 de **150 MB comprimidos / 150 MB desc
 - **Un worker por archivo**, destruido al terminar o cancelar: libera toda la memoria de la
   lectura sin depender del recolector de basura.
 - **Mensajes de progreso limitados** a uno cada 50 ms para no saturar el hilo principal.
-- **Al hilo principal solo vuelve un resumen** (`StructureFileInfo`), no el árbol NBT.
+- **Al hilo principal no vuelve el árbol NBT**, solo el resumen y la `Structure` ya decodificada.
 - **Reserva única del buffer** usando el tamaño indicado al final del gzip, para no duplicar la
   memoria al juntar los trozos descomprimidos.
 
+## Decodificación de Litematica (`feature/litematic-parser`)
+
+Medido con `pnpm test:perf` (`tests/perf/litematicParser.perf.test.ts`): una región con paleta
+de 256 estados (8 bits por bloque) y datos aleatorios, partiendo del NBT ya leído.
+
+| Región          | Bloques | Tiempo | Velocidad        | Memoria nueva                      |
+| --------------- | ------: | -----: | ---------------- | ---------------------------------- |
+| 256 × 256 × 256 |  16,8 M | 125 ms | ~134 M bloques/s | `blocks` (2 bytes/bloque), heap +0 |
+| 512 × 256 × 512 |  67,1 M | 455 ms | ~147 M bloques/s | 128 MiB (2 bytes/bloque), heap +0  |
+
+En Chrome, un `.litematic` de 512 × 256 × 512 (64 MB comprimido) se lee de principio a fin
+(descompresión + NBT + decodificación) en ~570 ms dentro del worker, con la interfaz respondiendo.
+
+### Decisiones
+
+- **Decodificación secuencial con aritmética de 32 bits** (`PackedReader`): sin `BigInt` y sin
+  multiplicaciones por bloque; la posición de bit avanza de forma incremental.
+- **Un único array denso** para toda la estructura (`Uint16Array`): ningún objeto por bloque.
+- **Transferencia sin copia**: el worker transfiere el `ArrayBuffer` de `blocks` al hilo
+  principal en tiempo constante.
+- **NBT de entidades copiado aparte** (`detachNbt`): enviarlo tal cual arrastraría una copia de
+  todo el archivo descomprimido, porque los `ByteArray` son vistas sobre ese buffer.
+- **Límite comprobado antes de reservar**: una estructura de más de 512 Mi posiciones se rechaza
+  sin intentar reservar la memoria.
+
 ## Compilación
 
-Tras `feature/nbt-reader`:
+Tras `feature/litematic-parser`:
 
 | Archivo               |   Tamaño |     gzip |
 | --------------------- | -------: | -------: |
-| `index.js`            | 70,79 kB | 27,02 kB |
-| `index.css`           | 10,27 kB |  2,47 kB |
-| `structure.worker.js` |  8,00 kB |        — |
+| `index.js`            | 75,33 kB | 28,35 kB |
+| `index.css`           | 11,09 kB |  2,58 kB |
+| `structure.worker.js` | 13,55 kB |        — |
 
 Deepslate no se incluye en el build: por ahora solo lo usan los tests.
 
