@@ -225,12 +225,23 @@ function meshOf(
   let found = false
   try {
     const definition = resources.getBlockDefinition(name)
+    let modelled = false
     if (definition) {
-      mesh.merge(definition.getMesh(name, { ...state.properties }, atlas, resources, cull))
+      const model = definition.getMesh(name, { ...state.properties }, atlas, resources, cull)
+      modelled = !model.isEmpty()
+      mesh.merge(model)
       found = true
     }
-    const special = SpecialRenderers.getBlockMesh(dsState, toDeepslateNbt(data), atlas, cull)
-    if (!special.isEmpty()) {
+    // Deepslate draws some blocks (signs, beds…) like the old entity models,
+    // from textures that newer versions moved (26.x has JSON models for them).
+    // When the game's own model exists it is used alone; only the water of a
+    // waterlogged block, which no model includes, is still added.
+    const special = modelled
+      ? dsState.isWaterlogged()
+        ? SpecialRenderers.getBlockMesh(DsBlockState.WATER, undefined, atlas, cull)
+        : null
+      : SpecialRenderers.getBlockMesh(dsState, toDeepslateNbt(data), atlas, cull)
+    if (special && !special.isEmpty()) {
       mesh.merge(special)
       found = true
     }

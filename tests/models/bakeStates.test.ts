@@ -3,7 +3,7 @@
  * fixture; skipped when absent). Uses a fake atlas: geometry and grouping do
  * not depend on the texture images.
  */
-import type { Identifier } from 'deepslate/core'
+import { Identifier } from 'deepslate/core'
 import { describe, expect, it } from 'vitest'
 import { readClientJar } from '../../src/lib/assets/minecraftJar'
 import {
@@ -161,6 +161,27 @@ describe.skipIf(!fs.existsSync(JAR))('bakeState with the real game models', () =
       expect(baked.missing, text).toBe(false)
       expect(baked.empty, text).toBe(false)
     }
+  })
+
+  it('uses the game models of signs and beds instead of the old entity ones', () => {
+    const states = [
+      'minecraft:oak_sign[rotation=0,waterlogged=false]',
+      'minecraft:oak_wall_sign[facing=north,waterlogged=false]',
+      'minecraft:oak_hanging_sign[rotation=0,attached=false,waterlogged=false]',
+      'minecraft:red_bed[facing=north,part=head,occupied=false]',
+    ].map(state)
+    const ids = collectTextureIds(states, resources)
+    const missing = [...ids].filter(
+      (id) => id !== MISSING_TEXTURE && !resources.getTexture(Identifier.parse(id)),
+    )
+    expect(missing).toEqual([])
+    // A waterlogged sign keeps its water.
+    const wet = bakeState(
+      state('minecraft:oak_sign[rotation=0,waterlogged=true]'),
+      resources,
+      fakeAtlas(),
+    )
+    expect(wet.geometry[RenderLayer.Translucent].some(Boolean)).toBe(true)
   })
 
   it('draws banner patterns from the block entity data', () => {
