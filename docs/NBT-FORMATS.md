@@ -96,7 +96,8 @@ raíz
 | 2–4     | Formato actual de entidades; ticks pendientes de bloques desde la 3 | Sí                                        |
 | 5–7     | Ticks de fluidos; versión actual 7 (`SubVersion` 1)                 | Sí                                        |
 
-- Archivos con versión < 5 o `MinecraftDataVersion` < 1631 usan **nombres de bloque anteriores a
+- Archivos con versión < 5 o `MinecraftDataVersion` < 1451 (17w47a, la snapshot que introdujo los
+  nombres actuales; la 1.13 es la 1519) usan **nombres de bloque anteriores a
   la 1.13**. Se leen y se marcan con un aviso. La tabla de IDs numéricos del parser MCEdit no
   sirve aquí, porque estos archivos guardan nombres de la 1.12, no números: su conversión queda
   pendiente.
@@ -156,7 +157,7 @@ versiones 1, 2 y 3. Es el formato de WorldEdit (que guarda en v3 desde la 7.3).
 
 ### Versiones antiguas
 
-Se marca el aviso de nombres anteriores a la 1.13 cuando `DataVersion` < 1631. La v1 no tiene
+Se marca el aviso de nombres anteriores a la 1.13 cuando `DataVersion` < 1451 (17w47a). La v1 no tiene
 `DataVersion`, así que **no se puede saber** si sus nombres son anteriores a la 1.13 y no se
 marca.
 
@@ -335,8 +336,6 @@ Limitaciones:
   bloque sin modelo en un archivo antiguo, se añade una regla.
 - La correspondencia del corazón de creaking (`active=false` → `uprooted`) es aproximada: un
   corazón inactivo de la 1.21.4 podía estar latente (`dormant`) o arrancado.
-- Los archivos de la 1.13 y la 1.13.1 (`DataVersion` 1519–1628) se tratan como anteriores a la
-  1.13 (el límite del aviso `legacyBlockNames` es 1631), así que no se ponen al día.
 
 ## Flujo de lectura
 

@@ -153,6 +153,11 @@ describe('parseSponge', () => {
     }
     expect(parse({ ...base, dataVersion: 1343 }).warnings.legacyBlockNames).toBe(true)
     expect(parse({ ...base, dataVersion: 1631 }).warnings.legacyBlockNames).toBe(false)
+    // The flattening came in 17w47a (1451): 1.13 (1519) and 1.13.1 (1628) are not legacy.
+    expect(parse({ ...base, dataVersion: 1450 }).warnings.legacyBlockNames).toBe(true)
+    expect(parse({ ...base, dataVersion: 1451 }).warnings.legacyBlockNames).toBe(false)
+    expect(parse({ ...base, dataVersion: 1519 }).warnings.legacyBlockNames).toBe(false)
+    expect(parse({ ...base, dataVersion: 1628 }).warnings.legacyBlockNames).toBe(false)
     expect(parse({ ...base, version: 1 }).warnings.legacyBlockNames).toBe(false)
   })
 
