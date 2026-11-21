@@ -231,6 +231,7 @@ export const en: Messages = {
     },
   },
   viewer: {
+    canvas: '3D view of the structure',
     toolbar: 'Viewer controls',
     fit: 'Fit',
     views: 'Views',
@@ -298,6 +299,20 @@ export const en: Messages = {
       pending: 'Pending',
     },
     keys: 'Page Up / Page Down: change layer',
+  },
+  inspector: {
+    hint: 'Click a block to inspect it',
+    close: 'Close the inspector',
+    position: 'Position',
+    layer: 'Layer',
+    goToLayer: 'Go to its layer',
+    inStructure: 'In the structure',
+    count: '{state} with this state · {total} in total',
+    properties: 'Properties',
+    noProperties: 'No properties',
+    blockEntity: 'Block data',
+    more: '… and {count} more',
+    hiddenLayer: 'Its layer is hidden.',
   },
   toast: {
     region: 'Notifications',

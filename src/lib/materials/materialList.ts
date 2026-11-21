@@ -1,4 +1,4 @@
-import type { Structure } from '../types/structure'
+import type { BlockState, Structure } from '../types/structure'
 import { blockToItems, type MaterialCategory } from './blockToItems'
 
 export interface Material {
@@ -65,4 +65,22 @@ export function itemDisplayName(
   const words = path.replace(/[/_]+/g, ' ').trim()
   const name = words.charAt(0).toUpperCase() + words.slice(1)
   return namespace === 'minecraft' ? name : `${namespace}: ${name}`
+}
+
+/**
+ * Name of a placed block. Uses the block's own entry of the language table;
+ * blocks without one (wall banners, wall signs…) take the name of the item
+ * that places them, as the game does: `brown_wall_banner` → "Brown Banner".
+ */
+export function blockDisplayName(
+  state: BlockState,
+  lang?: Readonly<Record<string, string>> | null,
+): string {
+  const [namespace, path] = state.name.includes(':')
+    ? state.name.split(':', 2)
+    : ['minecraft', state.name]
+  const own = lang?.[`block.${namespace}.${path.replaceAll('/', '.')}`]
+  if (own) return own
+  const [item] = blockToItems(state)
+  return itemDisplayName(item?.item ?? state.name, lang)
 }

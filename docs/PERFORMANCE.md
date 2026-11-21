@@ -177,6 +177,13 @@ se cambia de capa hasta que se dibujan las tapas: **~190 ms la primera vez** (el
 la estructura tras el mallado) y **14–83 ms** después, según los bloques del nivel. Una tapa ya
 guardada se muestra en el siguiente frame. El visor sigue a 4,1 ms por frame de mediana.
 
+## Inspector de bloques (`feature/block-inspector`)
+
+Seleccionar un bloque recorre la cuadrícula de bloques en el hilo principal: como mucho
+`X + Y + Z` celdas (en el terreno de 256 × 96 × 256, menos de 610 consultas al array). No depende
+del número de bloques ni de triángulos y no hace falta un worker. El árbol NBT está limitado a 8
+niveles y 64 hijos por nodo, así un cofre lleno de cajas de shulker no bloquea la interfaz.
+
 ## Compilación
 
 Tras `feature/structure-viewer`:

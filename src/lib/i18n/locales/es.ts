@@ -240,6 +240,7 @@ export const es = {
     },
   },
   viewer: {
+    canvas: 'Vista 3D de la estructura',
     toolbar: 'Controles del visor',
     fit: 'Ajustar',
     views: 'Vistas',
@@ -307,6 +308,20 @@ export const es = {
       pending: 'Pendiente',
     },
     keys: 'Re Pág / Av Pág: cambiar de capa',
+  },
+  inspector: {
+    hint: 'Clic en un bloque para inspeccionarlo',
+    close: 'Cerrar el inspector',
+    position: 'Posición',
+    layer: 'Capa',
+    goToLayer: 'Ir a su capa',
+    inStructure: 'En la estructura',
+    count: '{state} con este estado · {total} en total',
+    properties: 'Propiedades',
+    noProperties: 'Sin propiedades',
+    blockEntity: 'Datos del bloque',
+    more: '… y {count} más',
+    hiddenLayer: 'Su capa está oculta.',
   },
   toast: {
     region: 'Notificaciones',

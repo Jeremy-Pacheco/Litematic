@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { AIR } from '../../src/lib/parsers/blockState'
 import { parseBlockStateString } from '../../src/lib/parsers/blockStateString'
-import { buildMaterialList, itemDisplayName } from '../../src/lib/materials/materialList'
+import {
+  blockDisplayName,
+  buildMaterialList,
+  itemDisplayName,
+} from '../../src/lib/materials/materialList'
 import { stackBreakdown, stackSize } from '../../src/lib/materials/stackSizes'
 import type { BlockState } from '../../src/lib/types/structure'
 
@@ -93,5 +97,29 @@ describe('stacks', () => {
     expect(stackBreakdown(204, 64)).toEqual({ stacks: 3, remainder: 12, shulkerBoxes: 204 / 1728 })
     expect(stackBreakdown(1728, 64).shulkerBoxes).toBe(1)
     expect(stackBreakdown(5, 64)).toMatchObject({ stacks: 0, remainder: 5 })
+  })
+})
+
+describe('blockDisplayName', () => {
+  const lang = {
+    'block.minecraft.brown_banner': 'Brown Banner',
+    'block.minecraft.wall_torch': 'Wall Torch',
+    'block.minecraft.oak_stairs': 'Oak Stairs',
+  }
+  const state = (s: string) => parseBlockStateString(s)!
+
+  it("uses the block's own name when the game has one", () => {
+    expect(blockDisplayName(state('minecraft:oak_stairs[facing=north]'), lang)).toBe('Oak Stairs')
+    expect(blockDisplayName(state('minecraft:wall_torch[facing=east]'), lang)).toBe('Wall Torch')
+  })
+
+  it('falls back to the name of the item that places it', () => {
+    expect(blockDisplayName(state('minecraft:brown_wall_banner[facing=east]'), lang)).toBe(
+      'Brown Banner',
+    )
+  })
+
+  it('builds a readable name without the language table', () => {
+    expect(blockDisplayName(state('minecraft:oak_stairs'))).toBe('Oak stairs')
   })
 })
