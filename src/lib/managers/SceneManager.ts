@@ -4,11 +4,14 @@ import {
   Color,
   GridHelper,
   Group,
+  Raycaster,
+  Vector2,
   Scene,
   Vector3,
   WebGLRenderer,
   type Object3D,
 } from 'three'
+import type { Vec3 } from '../types/structure'
 import { CameraManager } from './CameraManager'
 
 export interface HelperOptions {
@@ -35,6 +38,9 @@ export class SceneManager {
   #box: Box3Helper | null = null
   #marker: Box3Helper | null = null
   #markerY: number | null = null
+  #selection: Box3Helper | null = null
+  #selectionPos: Vec3 | null = null
+  readonly #raycaster = new Raycaster()
   #size = new Vector3()
   #frame = 0
   #disposed = false
@@ -90,6 +96,7 @@ export class SceneManager {
     this.#helpers.add(this.#grid, this.#box)
     this.cameras.setBounds(new Box3(new Vector3(0, 0, 0), size.clone()))
     this.setLayerMarker(this.#markerY)
+    this.setSelection(this.#selectionPos)
     this.requestRender()
   }
 
@@ -114,6 +121,48 @@ export class SceneManager {
       this.#helpers.add(this.#marker)
     }
     this.requestRender()
+  }
+
+  /**
+   * Outlines the selected block, drawn over everything (no depth test) so it
+   * stays visible when other blocks are in front.
+   */
+  setSelection(pos: Vec3 | null): void {
+    this.#selectionPos = pos
+    if (this.#selection) {
+      this.#helpers.remove(this.#selection)
+      disposeObject(this.#selection)
+      this.#selection = null
+    }
+    if (pos) {
+      const pad = 0.004
+      const box = new Box3(
+        new Vector3(pos.x - pad, pos.y - pad, pos.z - pad),
+        new Vector3(pos.x + 1 + pad, pos.y + 1 + pad, pos.z + 1 + pad),
+      )
+      this.#selection = new Box3Helper(box, SELECTION_COLOR)
+      const material = this.#selection.material as { depthTest: boolean; transparent: boolean }
+      material.depthTest = false
+      material.transparent = true
+      this.#selection.renderOrder = 10
+      this.#helpers.add(this.#selection)
+    }
+    this.requestRender()
+  }
+
+  /** Ray from the camera through a point of the canvas (client coordinates), in structure space. */
+  rayAt(clientX: number, clientY: number): { origin: Vec3; direction: Vec3 } {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    const ndc = new Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    )
+    this.#raycaster.setFromCamera(ndc, this.cameras.camera)
+    const { origin, direction } = this.#raycaster.ray
+    return {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      direction: { x: direction.x, y: direction.y, z: direction.z },
+    }
   }
 
   /** Removes and frees every structure mesh. */
@@ -153,6 +202,7 @@ export class SceneManager {
     this.#grid = null
     this.#box = null
     this.#marker = null
+    this.#selection = null
   }
 
   #onContextLost = (event: Event) => {
@@ -167,6 +217,8 @@ export class SceneManager {
 
 /** Color of the current layer outline (the secondary color of the app, verdigris). */
 const MARKER_COLOR = 0x4fa89a
+/** Selected block outline: light copper, readable on dark and light backgrounds. */
+const SELECTION_COLOR = 0xffb27a
 
 /** Frees the GPU resources of an object and its children. */
 function disposeObject(object: Object3D): void {
