@@ -1,7 +1,7 @@
 # Renderizado
 
-> **Estado:** la preparación de modelos, el **visor 3D** y el **sistema de capas** están
-> implementados. El inspector de bloques (`feature/block-inspector`) está **pendiente**.
+> **Estado:** la preparación de modelos, el **visor 3D**, el **sistema de capas** y el
+> **inspector de bloques** están implementados.
 
 ## Preparación de modelos («bake»)
 
@@ -169,6 +169,37 @@ setLayerRange({ min, max })
 
 Limitaciones: un modelo que sobresale de su bloque por arriba (p. ej. un estandarte de pie) se
 corta en el plano; con la tapa recién pedida, el corte puede verse abierto unos milisegundos.
+
+## Inspector de bloques (`feature/block-inspector`)
+
+Un clic (sin arrastrar: arrastrar sigue girando la cámara) selecciona el bloque bajo el cursor.
+El bloque se marca con un contorno que se ve a través de los demás, y el inspector muestra:
+
+- **Nombre oficial** del idioma del juego (`blockDisplayName`). Los bloques sin entrada propia,
+  como los estandartes o carteles de pared, usan el nombre del objeto que los coloca, como hace
+  el juego.
+- Id, **posición X, Y, Z** (relativa a la estructura) y su **capa**, con un enlace para ir a ella.
+- Cuántos bloques hay **con ese estado** y **de ese tipo** en la estructura.
+- **Propiedades** del estado (orientación, mitad, conexiones…).
+- **Datos del bloque** (block entity: cofres, carteles, estandartes…) como un árbol NBT
+  plegable. Se muestra como texto y nunca se interpreta. Tiene límites de profundidad (8), de
+  hijos por nodo (64) y de longitud de texto (200), e indica cuánto se ha omitido.
+
+Escape o la × cierran el inspector; cambiar de estructura borra la selección. En pantallas
+estrechas, el inspector oculta el panel de capas mientras está abierto.
+
+### Selección sobre el array de bloques (`viewer/picking.ts`)
+
+No se lanza el rayo contra los triángulos: se recorre la cuadrícula de bloques con el algoritmo
+de Amanatides y Woo, desde que el rayo entra en la estructura hasta el primer bloque que no es
+aire. Visita como mucho `X + Y + Z` celdas, así cuesta lo mismo en una casa que en una ciudad.
+Funciona antes de que termine el mallado y no necesita mallas en el hilo principal.
+
+La caja que recorre el rayo se limita a las **capas visibles**, así un bloque de una capa oculta
+nunca se selecciona.
+
+Limitación: se selecciona la celda completa. Un bloque pequeño (una antorcha) se selecciona
+también al pulsar en el aire de su celda.
 
 ## Limitaciones conocidas
 
