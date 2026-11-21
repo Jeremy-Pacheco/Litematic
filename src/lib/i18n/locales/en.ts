@@ -121,6 +121,8 @@ export const en: Messages = {
     unknownLegacy: '{count} old blocks have no known equivalent and were read as air.',
     approximateLegacy:
       'File from before Minecraft 1.13: blocks that depend on their neighbors (fences, stairs, doors…) may show their default shape.',
+    newerThanAssets:
+      'The structure is from a newer version (DataVersion {dataVersion}) than the loaded assets ({version}, DataVersion {assetsDataVersion}): some blocks may have no name or texture.',
   },
   materials: {
     title: 'Materials',
@@ -156,12 +158,79 @@ export const en: Messages = {
     empty: 'This structure needs no materials.',
     noResults: 'No material matches the search.',
     namesNote:
-      'Provisional names based on the block id. Official names will come when the Minecraft assets are loaded.',
+      'Provisional names based on the block id. Load the Minecraft assets to see the official names.',
+    namesOfficial: 'Official Minecraft names.',
     special: {
       title: 'Fluids and unobtainable blocks',
       hint: 'Fluids are placed with a bucket. Unobtainable blocks cannot be obtained in survival.',
       fluid: 'Fluid (bucket)',
       unobtainable: 'Unobtainable',
+    },
+  },
+  assets: {
+    title: 'Minecraft assets',
+    open: 'Load Minecraft assets',
+    close: 'Close',
+    hint: 'With the assets of your Minecraft you will see the official block names and, later, their textures.',
+    intro:
+      'LitematicViewer uses the models, textures and names of your own copy of Minecraft Java. Select the client.jar of the version you play: it is read once and stored in this browser.',
+    privacy:
+      'The file is processed in your browser and is not uploaded to any server. Minecraft assets are not included in the application.',
+    select: 'Select client.jar',
+    replace: 'Change version',
+    remove: 'Remove assets',
+    loaded: 'Loaded assets',
+    version: 'Version',
+    files: 'Files',
+    filesValue: '{count} files · {size}',
+    whereTitle: 'Where is the client.jar?',
+    whereHint:
+      'Replace 26.3 with your version. With other launchers (Prism, Modrinth, CurseForge…), look in their versions or libraries folder for a .jar of that version of about 40 MB.',
+    indicatorReady: 'Assets {version}',
+    indicatorLoading: 'Loading assets…',
+    indicatorNone: 'No assets',
+    readyTitle: 'Assets loaded',
+    ready: 'Minecraft {version}: official names are now shown.',
+    removedTitle: 'Assets removed from this browser',
+    phase: {
+      reading: 'Reading the file…',
+      extracting: 'Extracting models, textures and names…',
+      saving: 'Saving in the browser…',
+    },
+    errors: {
+      'not-zip': {
+        title: 'Not a .jar file',
+        message: '{name} is not a ZIP/JAR file.',
+      },
+      'corrupt-zip': {
+        title: 'Damaged file',
+        message: '{name} is damaged or uses an unsupported format.',
+      },
+      'unsafe-archive': {
+        title: 'File rejected',
+        message: '{name} contains invalid paths and was rejected for safety.',
+      },
+      'too-large': {
+        title: 'File rejected',
+        message: '{name} exceeds the size or compression limits and was rejected for safety.',
+      },
+      'not-client-jar': {
+        title: 'Not the client.jar',
+        message:
+          '{name} does not contain the game assets. If it is the server jar, use the client one (versions folder).',
+      },
+      'storage-failed': {
+        title: 'The assets could not be saved',
+        message: 'The browser does not allow storing data (private mode or blocked storage).',
+      },
+      'read-failed': {
+        title: 'The file could not be read',
+        message: 'Unexpected error while reading {name}.',
+      },
+      cancelled: {
+        title: 'Loading cancelled',
+        message: 'Stopped reading {name}.',
+      },
     },
   },
   toast: {

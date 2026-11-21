@@ -128,6 +128,8 @@ export const es = {
       '{count} bloques antiguos no tienen un equivalente conocido y se han leído como aire.',
     approximateLegacy:
       'Archivo anterior a Minecraft 1.13: los bloques que dependen de sus vecinos (vallas, escaleras, puertas…) pueden verse con su forma por defecto.',
+    newerThanAssets:
+      'La estructura es de una versión más nueva (DataVersion {dataVersion}) que los recursos cargados ({version}, DataVersion {assetsDataVersion}): algunos bloques pueden no tener nombre ni textura.',
   },
   materials: {
     title: 'Materiales',
@@ -163,12 +165,81 @@ export const es = {
     empty: 'Esta estructura no necesita materiales.',
     noResults: 'Ningún material coincide con la búsqueda.',
     namesNote:
-      'Nombres provisionales a partir del identificador del bloque. Los nombres oficiales llegarán al cargar los recursos de Minecraft.',
+      'Nombres provisionales a partir del identificador del bloque. Para ver los nombres oficiales, carga los recursos de Minecraft.',
+    namesOfficial:
+      'Nombres oficiales de Minecraft, en inglés: el client.jar no incluye otros idiomas.',
     special: {
       title: 'Fluidos y bloques no obtenibles',
       hint: 'Los fluidos se colocan con un cubo. Los bloques no obtenibles no se pueden conseguir en supervivencia.',
       fluid: 'Fluido (cubo)',
       unobtainable: 'No obtenible',
+    },
+  },
+  assets: {
+    title: 'Recursos de Minecraft',
+    open: 'Cargar recursos de Minecraft',
+    close: 'Cerrar',
+    hint: 'Con los recursos de tu Minecraft verás los nombres oficiales de los bloques y, más adelante, sus texturas.',
+    intro:
+      'LitematicViewer usa los modelos, texturas y nombres de tu propia copia de Minecraft Java. Selecciona el client.jar de la versión que uses: se lee una sola vez y se guarda en este navegador.',
+    privacy:
+      'El archivo se procesa en tu navegador y no se sube a ningún servidor. Los recursos de Minecraft no se incluyen en la aplicación.',
+    select: 'Seleccionar client.jar',
+    replace: 'Cambiar de versión',
+    remove: 'Quitar recursos',
+    loaded: 'Recursos cargados',
+    version: 'Versión',
+    files: 'Archivos',
+    filesValue: '{count} archivos · {size}',
+    whereTitle: '¿Dónde está el client.jar?',
+    whereHint:
+      'Cambia 26.3 por tu versión. Con otros launchers (Prism, Modrinth, CurseForge…), busca en su carpeta de versiones o bibliotecas un .jar de la versión de unos 40 MB.',
+    indicatorReady: 'Recursos {version}',
+    indicatorLoading: 'Cargando recursos…',
+    indicatorNone: 'Sin recursos',
+    readyTitle: 'Recursos cargados',
+    ready: 'Minecraft {version}: ya se muestran los nombres oficiales.',
+    removedTitle: 'Recursos eliminados de este navegador',
+    phase: {
+      reading: 'Leyendo el archivo…',
+      extracting: 'Extrayendo modelos, texturas y nombres…',
+      saving: 'Guardando en el navegador…',
+    },
+    errors: {
+      'not-zip': {
+        title: 'No es un archivo .jar',
+        message: '{name} no es un archivo ZIP/JAR.',
+      },
+      'corrupt-zip': {
+        title: 'Archivo dañado',
+        message: '{name} está dañado o usa un formato no compatible.',
+      },
+      'unsafe-archive': {
+        title: 'Archivo rechazado',
+        message: '{name} contiene rutas no válidas y se ha rechazado por seguridad.',
+      },
+      'too-large': {
+        title: 'Archivo rechazado',
+        message:
+          '{name} supera los límites de tamaño o de compresión y se ha rechazado por seguridad.',
+      },
+      'not-client-jar': {
+        title: 'No es el client.jar',
+        message:
+          '{name} no contiene los recursos del juego. Si es el jar del servidor, usa el del cliente (carpeta versions).',
+      },
+      'storage-failed': {
+        title: 'No se han podido guardar los recursos',
+        message: 'El navegador no permite guardar datos (modo privado o almacenamiento bloqueado).',
+      },
+      'read-failed': {
+        title: 'No se ha podido leer el archivo',
+        message: 'Error inesperado al leer {name}.',
+      },
+      cancelled: {
+        title: 'Carga cancelada',
+        message: 'Se ha dejado de leer {name}.',
+      },
     },
   },
   toast: {

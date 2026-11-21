@@ -46,12 +46,22 @@ export function buildMaterialList(
 }
 
 /**
- * Readable name from an item id until the official translated names are
- * available (they come with the game assets): `minecraft:oak_stairs` →
- * "Oak stairs". Other namespaces keep a prefix: "create: Cogwheel".
+ * Display name of an item.
+ *
+ * With the game's language table (from the client jar), the official name:
+ * `block.minecraft.oak_stairs` → "Oak Stairs", or `item.minecraft.redstone`
+ * → "Redstone Dust". Without it, or for unknown ids, a readable name built
+ * from the id: "Oak stairs". Other namespaces keep a prefix: "create: Cogwheel".
  */
-export function itemDisplayName(item: string): string {
+export function itemDisplayName(
+  item: string,
+  lang?: Readonly<Record<string, string>> | null,
+): string {
   const [namespace, path] = item.includes(':') ? item.split(':', 2) : ['minecraft', item]
+  const key = `${namespace}.${path.replaceAll('/', '.')}`
+  const official = lang?.[`block.${key}`] ?? lang?.[`item.${key}`]
+  if (official) return official
+
   const words = path.replace(/[/_]+/g, ' ').trim()
   const name = words.charAt(0).toUpperCase() + words.slice(1)
   return namespace === 'minecraft' ? name : `${namespace}: ${name}`

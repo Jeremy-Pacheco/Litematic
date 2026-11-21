@@ -21,7 +21,8 @@ src/
 │   ├── stores/          Estado global reactivo (runas de Svelte 5)
 │   ├── constants/       Constantes compartidas
 │   ├── utils/           Funciones puras sin dependencias de la interfaz
-│   ├── managers/        Escena, cámara, recursos… (pendiente)
+│   ├── managers/        AssetManager (recursos del juego); escena y cámara pendientes
+│   ├── assets/          Lectura segura de ZIP, client.jar y caché IndexedDB
 │   ├── parsers/         Lectura de archivos: NBT, detección de formato y errores
 │   │   └── nbt/         Descompresión y lector NBT propio
 │   ├── workers/         Web Workers y su cliente para el hilo principal
@@ -45,6 +46,13 @@ docs/                    Documentación
 | `i18n/locales/{es,en}.ts`              | Textos de la interfaz                                                                     |
 | `stores/toasts.svelte.ts`              | Cola de notificaciones con cierre automático                                              |
 | `stores/importState.svelte.ts`         | Archivo elegido, estado de su lectura y `Structure` resultante; cancela la anterior       |
+| `assets/zipReader.ts`                  | Extracción segura de ZIP: rutas, límites, CRC-32                                          |
+| `assets/minecraftJar.ts`               | Valida el client.jar, lee `version.json` y elige qué extraer                              |
+| `assets/assetCache.ts`                 | Caché IndexedDB (meta, idioma, archivos)                                                  |
+| `managers/AssetManager.ts`             | API de recursos del juego para el resto de la app; worker por jar                         |
+| `stores/assets.svelte.ts`              | Estado de los recursos para la interfaz y tabla de idioma                                 |
+| `components/dialogs/AssetsDialog`      | Diálogo «Recursos de Minecraft» (`<dialog>` nativo)                                       |
+| `components/layout/AssetsIndicator`    | Indicador de recursos en la barra superior                                                |
 | `types/nbt.ts`                         | Modelo NBT en memoria (`Map`, `TypedArray`, listas y long arrays como objetos simples)    |
 | `types/structure.ts`                   | Modelo común `Structure` (paleta global + array denso Y-Z-X)                              |
 | `parsers/blockState.ts`                | Clave canónica de un estado de bloque, aire y sus variantes                               |

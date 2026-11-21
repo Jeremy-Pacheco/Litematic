@@ -4,6 +4,7 @@
   import { formatBytes } from '../../utils/format'
   import Icon from '../controls/Icon.svelte'
   import LanguageSwitcher from '../controls/LanguageSwitcher.svelte'
+  import AssetsIndicator from './AssetsIndicator.svelte'
   import ThemeSwitcher from '../controls/ThemeSwitcher.svelte'
 
   const selected = $derived(importState.current)
@@ -33,6 +34,7 @@
   {/if}
 
   <div class="tools">
+    <AssetsIndicator />
     <LanguageSwitcher />
     <ThemeSwitcher />
   </div>
