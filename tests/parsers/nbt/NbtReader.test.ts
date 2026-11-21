@@ -17,7 +17,13 @@ import { describe, expect, it } from 'vitest'
 import { StructureReadError } from '../../../src/lib/parsers/errors'
 import { getCompound, getList } from '../../../src/lib/parsers/nbt/access'
 import { readNbt } from '../../../src/lib/parsers/nbt/NbtReader'
-import { NbtList, NbtLongArray, NbtType } from '../../../src/lib/types/nbt'
+import {
+  isNbtLongArray,
+  longArrayGet,
+  NbtType,
+  type NbtList,
+  type NbtLongArray,
+} from '../../../src/lib/types/nbt'
 import {
   ByteWriter,
   byte,
@@ -79,8 +85,12 @@ describe('readNbt', () => {
     expect([...(root.get('ia') as Int32Array)]).toEqual([7, -8, 2_147_483_647])
 
     const la = root.get('la') as NbtLongArray
-    expect(la).toBeInstanceOf(NbtLongArray)
-    expect([la.get(0), la.get(1), la.get(2)]).toEqual([1n, -1n, 0x0123_4567_89ab_cdefn])
+    expect(isNbtLongArray(la)).toBe(true)
+    expect([longArrayGet(la, 0), longArrayGet(la, 1), longArrayGet(la, 2)]).toEqual([
+      1n,
+      -1n,
+      0x0123_4567_89ab_cdefn,
+    ])
     expect([...la.words.subarray(4, 6)]).toEqual([0x0123_4567, 0x89ab_cdef])
 
     const li = getList(root, 'li')
@@ -144,7 +154,7 @@ describe('readNbt', () => {
     expect([...(root.get('bytes') as Int8Array)]).toEqual([1, 2, -128])
     expect([...(root.get('ints') as Int32Array)]).toEqual([5, -6])
     const longs = root.get('longs') as NbtLongArray
-    expect([longs.get(0), longs.get(1)]).toEqual([10n, -20n])
+    expect([longArrayGet(longs, 0), longArrayGet(longs, 1)]).toEqual([10n, -20n])
     expect((root.get('list') as NbtList).items).toEqual(['a', 'b'])
     expect(getCompound(root, 'compound')?.get('x')).toBe(1)
   })

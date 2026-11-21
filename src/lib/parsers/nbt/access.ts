@@ -1,4 +1,11 @@
-import { NbtList, NbtLongArray, type NbtCompound, type NbtValue } from '../../types/nbt'
+import {
+  isNbtList,
+  isNbtLongArray,
+  type NbtCompound,
+  type NbtList,
+  type NbtLongArray,
+  type NbtValue,
+} from '../../types/nbt'
 
 /**
  * Typed accessors for compounds. They return `undefined` when the key is
@@ -33,7 +40,7 @@ export function getString(parent: NbtCompound, key: string): string | undefined 
 
 export function getList(parent: NbtCompound, key: string): NbtList | undefined {
   const value = parent.get(key)
-  return value instanceof NbtList ? value : undefined
+  return isNbtList(value) ? value : undefined
 }
 
 export function getByteArray(parent: NbtCompound, key: string): Int8Array | undefined {
@@ -48,5 +55,5 @@ export function getIntArray(parent: NbtCompound, key: string): Int32Array | unde
 
 export function getLongArray(parent: NbtCompound, key: string): NbtLongArray | undefined {
   const value = parent.get(key)
-  return value instanceof NbtLongArray ? value : undefined
+  return isNbtLongArray(value) ? value : undefined
 }

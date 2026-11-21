@@ -46,6 +46,13 @@ pnpm build
 - La documentación de `docs/` se actualiza en la misma rama que el código que describe.
   No se documentan como terminadas funcionalidades que no lo están.
 
+## Archivos de prueba reales
+
+Los archivos de estructuras reales (de otros autores) **no se suben al repositorio**. Para
+probarlos, cópialos en `tests/fixtures/local/`, que está en `.gitignore`. Los tests que los usan
+se saltan automáticamente si el archivo no existe. Para casos generados, usa los helpers de
+`tests/helpers/` (`encodeNbt`, `litematicRoot`, `region`…).
+
 ## Dependencias
 
 Se usa **pnpm**. No se añaden dependencias sin aprobarlo previamente.

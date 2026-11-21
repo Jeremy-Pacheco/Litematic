@@ -1,9 +1,9 @@
 import { StructureReadError } from '../parsers/errors'
-import type { ReadProgress, StructureFileInfo } from '../parsers/readStructureFile'
-import type { WorkerRequest, WorkerResponse } from './protocol'
+import type { ReadProgress } from '../parsers/readStructureFile'
+import type { StructureReadOutput, WorkerRequest, WorkerResponse } from './protocol'
 
 export interface StructureReadTask {
-  promise: Promise<StructureFileInfo>
+  promise: Promise<StructureReadOutput>
   /** Stops reading immediately and frees the worker's memory. */
   cancel: () => void
 }
@@ -23,7 +23,7 @@ export function readStructureInWorker(
   let settled = false
   let rejectTask: (error: StructureReadError) => void = () => {}
 
-  const promise = new Promise<StructureFileInfo>((resolve, reject) => {
+  const promise = new Promise<StructureReadOutput>((resolve, reject) => {
     rejectTask = reject
 
     const finish = () => {
@@ -37,7 +37,7 @@ export function readStructureInWorker(
         onProgress?.(message.progress)
       } else if (message.type === 'done') {
         finish()
-        resolve(message.info)
+        resolve({ info: message.info, structure: message.structure })
       } else {
         finish()
         reject(new StructureReadError(message.code, message.message))

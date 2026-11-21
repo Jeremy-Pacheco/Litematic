@@ -1,7 +1,9 @@
 import {
-  NbtList,
-  NbtLongArray,
+  createList,
+  createLongArray,
   NbtType,
+  type NbtList,
+  type NbtLongArray,
   type NbtCompound,
   type NbtDocument,
   type NbtTypeId,
@@ -126,7 +128,7 @@ class NbtReader {
     }
     const items: NbtValue[] = new Array(length)
     for (let i = 0; i < length; i++) items[i] = this.#payload(elementType, depth + 1)
-    return new NbtList(elementType as NbtTypeId, items)
+    return createList(elementType as NbtTypeId, items)
   }
 
   #byteArray(): Int8Array {
@@ -152,7 +154,7 @@ class NbtReader {
     let o = this.#offset
     for (let i = 0; i < words.length; i++, o += 4) words[i] = this.#view.getUint32(o)
     this.#offset = o
-    return new NbtLongArray(words)
+    return createLongArray(words)
   }
 
   #string(): string {

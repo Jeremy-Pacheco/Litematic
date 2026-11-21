@@ -22,6 +22,9 @@
   .shell {
     display: grid;
     grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+    /* Without an explicit column the implicit `auto` one grows to the widest
+       unbreakable content (e.g. a long file name) and overflows phones. */
+    grid-template-columns: minmax(0, 1fr);
     height: 100%;
   }
 

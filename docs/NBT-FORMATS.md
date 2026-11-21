@@ -1,13 +1,13 @@
 # Formatos NBT
 
-> **Estado:** la lectura de NBT y la detección del formato están implementadas. La
-> interpretación de los bloques de cada formato (parsers) está **pendiente**.
+> **Estado:** lectura de NBT, detección del formato y **parser de Litematica** implementados.
+> Los parsers de Sponge (`.schem`) y MCEdit (`.schematic`) están **pendientes**.
 
 ## Formatos soportados
 
 | Formato                               | Extensión    | Detección por contenido                            | Parser de bloques                    |
 | ------------------------------------- | ------------ | -------------------------------------------------- | ------------------------------------ |
-| Litematica                            | `.litematic` | `Version`, `Metadata` y `Regions` en la raíz       | ⏳ `feature/litematic-parser`        |
+| Litematica                            | `.litematic` | `Version`, `Metadata` y `Regions` en la raíz       | ✅ `feature/litematic-parser`        |
 | Sponge Schematic v3                   | `.schem`     | Compuesto `Schematic` con `Version` = 3 y `Blocks` | ⏳ `feature/schem-parser`            |
 | Sponge Schematic v1 / v2              | `.schem`     | `Version`, `Palette` y `BlockData` en la raíz      | ⏳ `feature/schem-parser`            |
 | MCEdit / Schematica (anterior a 1.13) | `.schematic` | `Blocks` y `Data` (ByteArray) y `Materials`        | ⏳ `feature/legacy-schematic-parser` |
@@ -27,6 +27,99 @@ Datos que ya se extraen sin interpretar los bloques:
 - Litematica puede usar tamaños negativos en las regiones; para el tamaño total se usa el valor
   absoluto.
 
+## Modelo común: `Structure`
+
+Todos los parsers producen el mismo tipo (`types/structure.ts`):
+
+| Campo           | Contenido                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------- |
+| `size`          | Caja que envuelve toda la estructura                                                                     |
+| `palette`       | Paleta global sin duplicados (`BlockState`: `name` + `properties`). Índice 0 = aire                      |
+| `blocks`        | Índice de paleta por posición, orden Y-Z-X: `(y · size.z + z) · size.x + x`                              |
+| `nonAirBlocks`  | Posiciones que no son aire                                                                               |
+| `blockEntities` | Posición, `id` y NBT completo (copiado, sin referencias al archivo descomprimido)                        |
+| `entities`      | Posición fraccionaria, `id` y NBT                                                                        |
+| `regions`       | Subregiones con nombre (Litematica); el resto de formatos tendrá una sola                                |
+| `metadata`      | Nombre, autor, descripción, fechas                                                                       |
+| `warnings`      | Problemas no fatales: índices inexistentes, nombres anteriores a 1.13, solapamientos, entidades omitidas |
+
+- `blocks` es un `Uint16Array` (2 bytes por bloque) salvo que la paleta supere 65 536 estados.
+- `minecraft:cave_air` y `minecraft:void_air` se tratan como aire (índice 0).
+- Las propiedades se crean con `Object.fromEntries`: una clave `__proto__` es un dato más.
+- Los nombres de bloque se guardan **tal como están en el archivo**. Los cambios de nombre entre
+  versiones (`grass` → `short_grass`…) se resolverán donde importan: al buscar modelos y
+  texturas.
+- **Límite de tamaño:** 512 Mi posiciones (1 GiB de `blocks`). Se comprueba **antes** de
+  reservar memoria (`structure-too-large`).
+- El worker **transfiere** `blocks` al hilo principal (sin copia). El resto es pequeño.
+
+## Litematica (`.litematic`)
+
+Referencia: `LitematicaSchematic`, `LitematicaBlockStateContainer` y `LitematicaBitArray` del
+código fuente de Litematica (fork mantenido de sakura-ryoko, rama 26.3).
+
+```text
+raíz
+├─ Version / SubVersion / MinecraftDataVersion
+├─ Metadata      Name, Author, Description, EnclosingSize, TotalBlocks, TimeCreated…
+└─ Regions
+   └─ <nombre>   Position, Size, BlockStatePalette, BlockStates,
+                 TileEntities, Entities, PendingBlockTicks, PendingFluidTicks
+```
+
+### Empaquetado de bloques
+
+- Bits por bloque: `max(2, ceil(log2(tamaño de la paleta)))`.
+- Las entradas van seguidas desde el bit menos significativo del `long` 0. **Una entrada puede
+  quedar repartida entre dos `long`** (a diferencia del formato de chunks de Minecraft desde 1.16,
+  que deja huecos). Número de `long`: `ceil(volumen · bits / 64)`.
+- Orden de las entradas en la región: `(y · tamX · tamZ) + z · tamX + x`.
+- `PackedReader` decodifica con aritmética de 32 bits: vista la lista de `long` como palabras de
+  32 bits desde el extremo menos significativo, la palabra `k` es `words[k ^ 1]`.
+
+### Regiones
+
+- `Size` puede ser **negativo** en cualquier eje: la región se extiende hacia coordenadas
+  negativas desde `Position`, y su esquina mínima es `Position + Size + 1` en ese eje.
+- Todas las regiones se colocan en una caja común que empieza en (0, 0, 0). El tamaño se calcula a
+  partir de las regiones, no de `EnclosingSize`.
+- Si dos regiones ponen bloques distintos en la misma posición, gana la última leída y se avisa.
+  El aire de una región no borra los bloques de otra.
+- `TileEntities` (`x`, `y`, `z`) y `Entities` (`Pos`) son relativos a la esquina mínima de su
+  región.
+
+### Versiones
+
+| Versión | Diferencias                                                         | Soporte                                   |
+| ------- | ------------------------------------------------------------------- | ----------------------------------------- |
+| 1       | Otro formato de TileEntities y Entities                             | Bloques sí; entidades se omiten con aviso |
+| 2–4     | Formato actual de entidades; ticks pendientes de bloques desde la 3 | Sí                                        |
+| 5–7     | Ticks de fluidos; versión actual 7 (`SubVersion` 1)                 | Sí                                        |
+
+- Archivos con versión < 5 o `MinecraftDataVersion` < 1631 usan **nombres de bloque anteriores a
+  la 1.13**. Se leen y se marcan con un aviso; la conversión llegará con la tabla de
+  `feature/legacy-schematic-parser`.
+- Los ticks pendientes no se usan (no afectan a lo que se construye).
+
+### Validación
+
+| Problema                                              | Resultado             |
+| ----------------------------------------------------- | --------------------- |
+| Sin versión, sin regiones, región sin posición/tamaño | `invalid-structure`   |
+| `BlockStates` con menos `long` de los necesarios      | `invalid-structure`   |
+| Entrada de paleta sin `Name`                          | `invalid-structure`   |
+| Índice de bloque fuera de la paleta                   | Aire + aviso          |
+| Entidad sin posición válida                           | Se omite + aviso      |
+| Estructura de más de 512 Mi posiciones                | `structure-too-large` |
+
+### Verificación con un archivo real
+
+Un `.litematic` real (versión 7, `MinecraftDataVersion` 4325, región con `Size` negativo en Z,
+paleta de 52 estados → 6 bits) da exactamente los **5383 bloques** que Litematica guardó en
+`Metadata.TotalBlocks`. El archivo no se incluye en el repositorio: el test
+(`tests/parsers/litematic/realFile.test.ts`) lo busca en `tests/fixtures/local/`, carpeta ignorada
+por git, y se salta si no está.
+
 ## Flujo de lectura
 
 ```text
@@ -34,6 +127,7 @@ Blob ─► detectCompression (primeros bytes) ─► gzip / zlib / sin comprimi
      ─► DecompressionStream (streaming, límite 1 GiB) ─► Uint8Array
      ─► readNbt ─► NbtDocument
      ─► detectFormat ─► StructureFileInfo
+     ─► parser del formato (si existe) ─► Structure
 ```
 
 ### Compresión
@@ -59,7 +153,12 @@ Blob ─► detectCompression (primeros bytes) ─► gzip / zlib / sin comprimi
 | IntArray                        | `Int32Array`                                                 |
 | LongArray                       | `NbtLongArray`: pares de palabras de 32 bits (`Uint32Array`) |
 | List                            | `NbtList` (tipo de elemento + `items`)                       |
-| Compound                        | `Map<string, NbtValue>`                                      |
+
+`NbtList` y `NbtLongArray` son **objetos simples** con un campo `kind`, no clases: al enviarlos
+entre el worker y la página (`postMessage`) el navegador conserva `Map`, typed arrays y objetos
+simples, pero pierde los prototipos de las clases. `detachNbt` hace una copia propia de un
+fragmento antes de enviarlo, para no arrastrar el buffer completo del archivo.
+| Compound | `Map<string, NbtValue>` |
 
 - **`LongArray` en palabras de 32 bits**: los bloques de `.litematic` están empaquetados en
   `long`s con un número variable de bits por bloque. Desempaquetarlos con aritmética de 32 bits

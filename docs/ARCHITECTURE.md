@@ -33,36 +33,41 @@ docs/                    Documentación
 
 ## Módulos implementados
 
-| Módulo                           | Responsabilidad                                                                           |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `styles/tokens.css`              | Paleta, tipografía, espaciado, radios y duración de animaciones                           |
-| `stores/theme.svelte.ts`         | Tema elegido (automático, claro, oscuro) y tema efectivo                                  |
-| `i18n/translate.ts`              | Tipos de mensajes, `translate()` y detección del idioma del navegador                     |
-| `i18n/i18n.svelte.ts`            | Idioma activo y función `t()` reactiva                                                    |
-| `i18n/locales/{es,en}.ts`        | Textos de la interfaz                                                                     |
-| `stores/toasts.svelte.ts`        | Cola de notificaciones con cierre automático                                              |
-| `stores/importState.svelte.ts`   | Archivo elegido y estado de su lectura (leyendo, listo, error); cancela la anterior       |
-| `types/nbt.ts`                   | Modelo NBT en memoria (`Map`, `TypedArray`, `NbtLongArray`)                               |
-| `parsers/nbt/decompress.ts`      | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
-| `parsers/nbt/NbtReader.ts`       | Lector NBT binario con validación de longitudes y profundidad                             |
-| `parsers/nbt/modifiedUtf8.ts`    | Decodificación de cadenas en UTF-8 modificado de Java                                     |
-| `parsers/nbt/access.ts`          | Lectura tipada de compuestos (`getInteger`, `getCompound`…)                               |
-| `parsers/detectFormat.ts`        | Identifica Litematica, Sponge v1/v2/v3 o MCEdit por el contenido                          |
-| `parsers/readStructureFile.ts`   | Flujo completo: descomprimir → NBT → detectar formato                                     |
-| `parsers/errors.ts`              | `StructureReadError` con códigos de error traducibles                                     |
-| `workers/structure.worker.ts`    | Ejecuta `readStructureFile` fuera del hilo principal                                      |
-| `workers/structureWorkerClient`  | Crea un worker por archivo; promesa, progreso y cancelación                               |
-| `utils/structureFile.ts`         | Comprobación previa del archivo (extensión y tamaño cero)                                 |
-| `utils/storage.ts`               | Acceso a `localStorage` que no rompe la app si no está disponible                         |
-| `utils/format.ts`                | `formatBytes`: tamaño de archivo legible según el idioma                                  |
-| `constants/formats.ts`           | Formatos de estructura y sus extensiones                                                  |
-| `constants/storage.ts`           | Claves de `localStorage`                                                                  |
-| `components/layout/AppShell`     | Barra superior + contenido + notificaciones                                               |
-| `components/layout/TopBar`       | Marca, archivo seleccionado (nombre, tamaño, dimensiones), idioma y tema                  |
-| `components/import/ImportScreen` | Orquesta la importación y traduce el resultado a notificaciones                           |
-| `components/import/*`            | `DropZone`, `WindowDropTarget`, `FilePickerButton`, `ReadingProgress`, `StructureSummary` |
-| `components/feedback/Toaster`    | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`                |
-| `components/controls/*`          | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher`   |
+| Módulo                                 | Responsabilidad                                                                           |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `styles/tokens.css`                    | Paleta, tipografía, espaciado, radios y duración de animaciones                           |
+| `stores/theme.svelte.ts`               | Tema elegido (automático, claro, oscuro) y tema efectivo                                  |
+| `i18n/translate.ts`                    | Tipos de mensajes, `translate()` y detección del idioma del navegador                     |
+| `i18n/i18n.svelte.ts`                  | Idioma activo y función `t()` reactiva                                                    |
+| `i18n/locales/{es,en}.ts`              | Textos de la interfaz                                                                     |
+| `stores/toasts.svelte.ts`              | Cola de notificaciones con cierre automático                                              |
+| `stores/importState.svelte.ts`         | Archivo elegido, estado de su lectura y `Structure` resultante; cancela la anterior       |
+| `types/nbt.ts`                         | Modelo NBT en memoria (`Map`, `TypedArray`, listas y long arrays como objetos simples)    |
+| `types/structure.ts`                   | Modelo común `Structure` (paleta global + array denso Y-Z-X)                              |
+| `parsers/blockState.ts`                | Clave canónica de un estado de bloque, aire y sus variantes                               |
+| `parsers/structureBuilder.ts`          | Paleta global sin duplicados, límite de tamaño y reserva del array de bloques             |
+| `parsers/litematic/bitArray.ts`        | Decodificador del empaquetado de bits de Litematica                                       |
+| `parsers/litematic/LitematicParser.ts` | `.litematic` → `Structure` (regiones, tamaños negativos, entidades, metadatos)            |
+| `parsers/nbt/decompress.ts`            | Detección de compresión y descompresión en streaming con límite de 1 GiB                  |
+| `parsers/nbt/NbtReader.ts`             | Lector NBT binario con validación de longitudes y profundidad                             |
+| `parsers/nbt/modifiedUtf8.ts`          | Decodificación de cadenas en UTF-8 modificado de Java                                     |
+| `parsers/nbt/access.ts`                | Lectura tipada de compuestos (`getInteger`, `getCompound`…)                               |
+| `parsers/detectFormat.ts`              | Identifica Litematica, Sponge v1/v2/v3 o MCEdit por el contenido                          |
+| `parsers/readStructureFile.ts`         | Flujo completo: descomprimir → NBT → detectar formato → parser del formato                |
+| `parsers/errors.ts`                    | `StructureReadError` con códigos de error traducibles                                     |
+| `workers/structure.worker.ts`          | Ejecuta `readStructureFile` fuera del hilo principal                                      |
+| `workers/structureWorkerClient`        | Crea un worker por archivo; promesa, progreso y cancelación                               |
+| `utils/structureFile.ts`               | Comprobación previa del archivo (extensión y tamaño cero)                                 |
+| `utils/storage.ts`                     | Acceso a `localStorage` que no rompe la app si no está disponible                         |
+| `utils/format.ts`                      | `formatBytes` y `formatCount`: tamaños y cantidades según el idioma                       |
+| `constants/formats.ts`                 | Formatos de estructura y sus extensiones                                                  |
+| `constants/storage.ts`                 | Claves de `localStorage`                                                                  |
+| `components/layout/AppShell`           | Barra superior + contenido + notificaciones                                               |
+| `components/layout/TopBar`             | Marca, archivo seleccionado (nombre, tamaño, dimensiones), idioma y tema                  |
+| `components/import/ImportScreen`       | Orquesta la importación y traduce el resultado a notificaciones                           |
+| `components/import/*`                  | `DropZone`, `WindowDropTarget`, `FilePickerButton`, `ReadingProgress`, `StructureSummary` |
+| `components/feedback/Toaster`          | Muestra las notificaciones (`aria-live`), respeta `prefers-reduced-motion`                |
+| `components/controls/*`                | `Button`, `Icon` (SVG propios), `SegmentedControl`, `ThemeSwitcher`, `LanguageSwitcher`   |
 
 ## Interfaz
 
@@ -116,7 +121,7 @@ importState.load(file) ─► readStructureInWorker ─► [worker] readStructur
 ReadingProgress (barra + cancelar)            StructureFileInfo | StructureReadError
      │
      ▼
-StructureSummary (formato, dimensiones, DataVersion, tamaños, tiempo) + notificación
+StructureSummary (formato, dimensiones, bloques, paleta, regiones, avisos…) + notificación
 ```
 
 1. El usuario elige un archivo o lo suelta en cualquier parte de la ventana.
@@ -124,13 +129,15 @@ StructureSummary (formato, dimensiones, DataVersion, tamaños, tiempo) + notific
    **no se considera fiable**: decide el contenido.
 3. `importState.load()` cancela cualquier lectura anterior y crea un **worker nuevo** para el
    archivo. Al terminar o cancelar, el worker se destruye y su memoria se libera entera.
-4. El worker descomprime, lee el NBT y detecta el formato. Al hilo principal solo vuelve un
-   resumen pequeño (`StructureFileInfo`); el árbol NBT no se copia.
+4. El worker descomprime, lee el NBT, detecta el formato y, si ya existe su parser, lo convierte
+   en una `Structure`. Al hilo principal vuelven el resumen (`StructureFileInfo`) y la
+   `Structure`, con su array de bloques **transferido** (sin copia); el árbol NBT no se envía.
 5. Si el contenido no coincide con la extensión, se avisa y se usa el contenido.
 6. Los errores llegan con un código (`too-large`, `invalid-nbt`…) que se traduce a una
    notificación. Ver [NBT-FORMATS.md](NBT-FORMATS.md).
 
-Los bloques todavía no se interpretan: eso corresponde a los parsers de cada formato.
+Parsers disponibles: Litematica. Para `.schem` y `.schematic` se muestra el resumen del archivo
+y se indica que sus bloques aún no se interpretan.
 
 ## Principios
 
