@@ -214,20 +214,8 @@ Cada `id:meta` se traduce a un blockstate moderno con la tabla `src/lib/data/leg
 - Se regenera con `node scripts/update-legacy-blocks.mjs`, fijado a ese commit.
 - Búsqueda: `id:meta` → si no existe, `id:0` (variante por defecto) → si tampoco, aire y aviso
   `unknownLegacyBlocks`.
-- **Renombres posteriores a la 1.13** (`LEGACY_RENAMES` en `parsers/mcedit/legacyBlocks.ts`): la
-  tabla da nombres de la 1.13 y los recursos actuales solo tienen los nuevos. Se mantienen las
-  propiedades.
-
-  | 1.13         | Actual              | Desde  |
-  | ------------ | ------------------- | ------ |
-  | `sign`       | `oak_sign`          | 1.14   |
-  | `wall_sign`  | `oak_wall_sign`     | 1.14   |
-  | `stone_slab` | `smooth_stone_slab` | 1.14   |
-  | `grass_path` | `dirt_path`         | 1.17   |
-  | `grass`      | `short_grass`       | 1.20.3 |
-
-  `stone_slab` es un cambio de significado: en la 1.13 era la losa de piedra lisa (la de la
-  1.12), y desde la 1.14 `stone_slab` es otra losa, de piedra normal. Un test comprueba con el
+- La tabla da estados de la 1.13; se ponen al día como los de cualquier archivo de la 1.13 (ver
+  [Puesta al día de estados](#puesta-al-día-de-estados-113)). Un test comprueba con el
   `client.jar` local (26.3) que todos los bloques que da la tabla tienen blockstate.
 
 - Cada combinación `id:meta` se resuelve **una sola vez**; después se usa una tabla de 65 536
@@ -294,10 +282,6 @@ forma de la 1.16+ (la de los modelos que usa el visor):
 - **"Sólido"** también se decide por nombre. Casos límite (pistones extendidos, la parte trasera
   de una escalera) no conectan aunque en el juego sí lo hagan.
 - **IDs de mods** (`SchematicaMapping`) no están en la tabla: se leen como aire con aviso.
-- **Renombres en `.litematic` y `.schem` de la 1.13**: esos archivos guardan los mismos nombres
-  antiguos (`sign`, `grass`…), pero los renombres solo se aplican a la tabla de `.schematic`.
-- **Renombres futuros**: si Minecraft vuelve a renombrar un bloque, hay que añadirlo a
-  `LEGACY_RENAMES`. El test con el `client.jar` local lo detecta.
 - La tabla traduce IDs **numéricos**. Los `.litematic` y Sponge v1 anteriores a la 1.13 guardan
   **nombres de la 1.12** (`minecraft:stone[variant=granite]`), que esta tabla no cubre; siguen
   mostrando el aviso `legacyBlockNames`.
@@ -315,6 +299,44 @@ modelos reales del `client.jar` 26.3: ninguno queda sin modelo y la geometría c
 (un muro con los valores de la tabla, `east=false`…, no tiene ninguna cara en los modelos
 actuales; corregido tiene 10–16; una valla pasa de 6 caras, solo el poste, a 26). No se comprobó
 a ojo en el navegador.
+
+## Puesta al día de estados (1.13+)
+
+Un archivo guardado en una versión antigua usa los nombres y propiedades de esa versión, y los
+recursos actuales solo tienen los de ahora. `parsers/blockStateUpgrade.ts` hace lo que los _data
+fixers_ del juego al abrir un mundo antiguo, para cada entrada de la paleta (el coste depende de
+la paleta, no del tamaño de la estructura). Lo usan los tres formatos: `.litematic` y `.schem`
+con su `DataVersion`, y la tabla de `.schematic` como si fuera un archivo de la 1.13.
+
+| Cambio                                                                      | Versión | Se aplica si…                 |
+| --------------------------------------------------------------------------- | ------- | ----------------------------- |
+| `sign`, `wall_sign` → `oak_sign`, `oak_wall_sign`                           | 1.14    | El nombre es el antiguo       |
+| `stone_slab` → `smooth_stone_slab`                                          | 1.14    | `DataVersion ≤ 1631` (1.13.2) |
+| Muros: lados `true`/`false` → `low`/`none`                                  | 1.16    | El valor es `true`/`false`    |
+| Jigsaw: `facing` → `orientation` (`up` → `up_north`, `north` → `north_up`…) | 1.16    | Tiene `facing`                |
+| `grass_path` → `dirt_path`                                                  | 1.17    | El nombre es el antiguo       |
+| `cauldron[level=1..3]` → `water_cauldron[level]`; `level=0` → `cauldron`    | 1.17    | Tiene `level`                 |
+| `grass` → `short_grass`                                                     | 1.20.3  | El nombre es el antiguo       |
+| Corazón de creaking: `active` → `creaking_heart_state` (`awake`/`uprooted`) | 1.21.5  | Tiene `active`                |
+| `chain` → `iron_chain`                                                      | 1.21.9  | El nombre es el antiguo       |
+
+- Todas las reglas menos la de las losas comprueban el nombre o la propiedad antigua, así que
+  aplicarlas a un estado actual no cambia nada. `stone_slab` cambió de significado (en la 1.13
+  era la losa de piedra lisa; desde la 1.14 es la de piedra normal), así que solo se renombra si
+  la versión lo indica. Sin `DataVersion` (Sponge v1) se deja como está.
+- No se aplica a archivos anteriores a la 1.13 (aviso `legacyBlockNames`): allí `grass` es
+  `grass_block`.
+- Un test con el `client.jar` local comprueba que cada regla da un bloque, propiedades y valores
+  que existen en la 26.3.
+
+Limitaciones:
+
+- Solo cambios entre versiones publicadas que se conocen; no los de snapshots. Si aparece otro
+  bloque sin modelo en un archivo antiguo, se añade una regla.
+- La correspondencia del corazón de creaking (`active=false` → `uprooted`) es aproximada: un
+  corazón inactivo de la 1.21.4 podía estar latente (`dormant`) o arrancado.
+- Los archivos de la 1.13 y la 1.13.1 (`DataVersion` 1519–1628) se tratan como anteriores a la
+  1.13 (el límite del aviso `legacyBlockNames` es 1631), así que no se ponen al día.
 
 ## Flujo de lectura
 

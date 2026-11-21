@@ -1,6 +1,7 @@
 import { detachNbt, isNbtCompound, type NbtCompound, type NbtValue } from '../../types/nbt'
-import type { BlockEntity, Entity, Structure, Vec3 } from '../../types/structure'
+import type { BlockEntity, BlockState, Entity, Structure, Vec3 } from '../../types/structure'
 import { parseBlockStateString } from '../blockStateString'
+import { upgradeBlockState } from '../blockStateUpgrade'
 import { StructureReadError } from '../errors'
 import {
   getByteArray,
@@ -66,7 +67,12 @@ export function parseSponge(root: NbtCompound, onProgress?: ParseProgressCallbac
   warnings.legacyBlockNames = dataVersion !== null && dataVersion < DATA_VERSION_FLATTENING
 
   const palette = new PaletteBuilder()
-  const lookup = buildLookup(paletteTag, palette)
+  // Pre-1.13 names are kept as they are (and flagged); later ones are brought
+  // up to the current game. v1 has no DataVersion: see `upgradeBlockState`.
+  const upgrade = warnings.legacyBlockNames
+    ? (state: BlockState) => state
+    : (state: BlockState) => upgradeBlockState(state, dataVersion)
+  const lookup = buildLookup(paletteTag, palette, upgrade)
   const blocks = allocateBlocks(size, palette.states.length)
   const volume = size.x * size.y * size.z
 
@@ -128,7 +134,11 @@ export function parseSponge(root: NbtCompound, onProgress?: ParseProgressCallbac
  * The palette maps block state text to a local index: `{"minecraft:stone": 1}`.
  * Returns a table local index → global index, with -1 for unused indices.
  */
-function buildLookup(paletteTag: NbtCompound, palette: PaletteBuilder): Int32Array {
+function buildLookup(
+  paletteTag: NbtCompound,
+  palette: PaletteBuilder,
+  upgrade: (state: BlockState) => BlockState,
+): Int32Array {
   let maxIndex = -1
   for (const [key, value] of paletteTag) {
     if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
@@ -142,7 +152,7 @@ function buildLookup(paletteTag: NbtCompound, palette: PaletteBuilder): Int32Arr
   for (const [key, value] of paletteTag) {
     const state = parseBlockStateString(key)
     if (!state) throw invalid(`Invalid block state "${key}"`)
-    lookup[value as number] = palette.add(state)
+    lookup[value as number] = palette.add(upgrade(state))
   }
   return lookup
 }
