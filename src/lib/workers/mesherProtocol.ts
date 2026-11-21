@@ -5,7 +5,11 @@ export type MesherRequest =
   | {
       type: 'mesh'
       size: Vec3
+      /** The whole structure, or a slab of layers starting at `yStart`. */
       blocks: Uint16Array | Uint32Array
+      yStart: number
+      /** Section rows (along Y) this worker meshes: [from, to). */
+      rows: { from: number; to: number }
       states: MesherState[]
     }
   /** Top or bottom faces of one level, for the layer system (after `mesh`). */

@@ -62,8 +62,16 @@ export interface SectionMesh {
 }
 
 export interface MesherInput {
+  /** Size of the whole structure. */
   size: Vec3
+  /**
+   * Blocks of the whole structure, or of a slab of whole layers starting at
+   * `yStart` (a worker meshing part of the structure only needs its layers
+   * plus one above and one below).
+   */
   blocks: Uint16Array | Uint32Array
+  /** First layer held by `blocks` (0 for the whole structure). */
+  yStart?: number
   states: readonly MesherState[]
 }
 
@@ -101,6 +109,9 @@ interface PreparedGroup {
 export class Mesher {
   readonly #size: Vec3
   readonly #blocks: Uint16Array | Uint32Array
+  /** Layers held by `#blocks`: [`#yStart`, `#yEnd`). */
+  readonly #yStart: number
+  readonly #yEnd: number
   readonly #states: readonly MesherState[]
   readonly #prepared: (PreparedGroup | null)[][][]
   /** Full-height shape of fluid blocks (`null` for other states). */
@@ -109,6 +120,8 @@ export class Mesher {
   constructor(input: MesherInput) {
     this.#size = input.size
     this.#blocks = input.blocks
+    this.#yStart = input.yStart ?? 0
+    this.#yEnd = this.#yStart + input.blocks.length / (input.size.x * input.size.z)
     this.#states = input.states
     const prepareAll = (geometry: (QuadGeometry | null)[][]) =>
       geometry.map((groups) => groups.map((g) => (g ? prepare(g) : null)))
@@ -173,7 +186,7 @@ export class Mesher {
     for (let y = y0; y < y1; y++) {
       for (let z = z0; z < z1; z++) {
         for (let x = x0; x < x1; x++) {
-          const stateIndex = this.#blocks[(y * Z + z) * X + x]
+          const stateIndex = this.#blocks[((y - this.#yStart) * Z + z) * X + x]
           const state = this.#states[stateIndex]
           if (!state || state.empty) continue
           // A fluid with the same fluid above fills its whole block.
@@ -232,9 +245,15 @@ export class Mesher {
 
   /** Fluid filling a position (`FLUID_NONE` outside the structure). */
   #fluidAt(x: number, y: number, z: number): number {
-    const { x: X, y: Y, z: Z } = this.#size
-    if (x < 0 || y < 0 || z < 0 || x >= X || y >= Y || z >= Z) return FLUID_NONE
-    return this.#states[this.#blocks[(y * Z + z) * X + x]]?.fluid ?? FLUID_NONE
+    const index = this.#indexAt(x, y, z)
+    return index < 0 ? FLUID_NONE : (this.#states[this.#blocks[index]]?.fluid ?? FLUID_NONE)
+  }
+
+  /** Index in `#blocks` of a position, or -1 outside the structure or the slab. */
+  #indexAt(x: number, y: number, z: number): number {
+    const { x: X, z: Z } = this.#size
+    if (x < 0 || z < 0 || x >= X || z >= Z || y < this.#yStart || y >= this.#yEnd) return -1
+    return ((y - this.#yStart) * Z + z) * X + x
   }
 
   /**
@@ -254,9 +273,9 @@ export class Mesher {
     const nx = x + dx
     const ny = y + dy
     const nz = z + dz
-    const { x: X, y: Y, z: Z } = this.#size
-    if (nx < 0 || ny < 0 || nz < 0 || nx >= X || ny >= Y || nz >= Z) return false
-    const neighborIndex = this.#blocks[(ny * Z + nz) * X + nx]
+    const position = this.#indexAt(nx, ny, nz)
+    if (position < 0) return false
+    const neighborIndex = this.#blocks[position]
     const neighbor = this.#states[neighborIndex]
     if (!neighbor || neighbor.empty) return false
     const opposite = 1 << OPPOSITE[group]

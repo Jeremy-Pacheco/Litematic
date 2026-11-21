@@ -5,10 +5,11 @@ import type { MesherRequest, MesherResponse } from './mesherProtocol'
 /**
  * Builds section meshes off the main thread and streams them as they are
  * ready (bottom layer first), so the structure appears progressively. The
- * vertex arrays are transferred, not copied.
+ * vertex arrays are transferred, not copied. Several workers can share a
+ * structure, each meshing its own rows of sections.
  *
- * The worker then stays alive with the structure, answering `cap` requests
- * from the layer system, until the viewer changes structure.
+ * The worker holding the whole structure then stays alive, answering `cap`
+ * requests from the layer system, until the viewer changes structure.
  */
 const scope = self as unknown as DedicatedWorkerGlobalScope
 let mesher: Mesher | null = null
@@ -36,12 +37,13 @@ function meshAll(request: Extract<MesherRequest, { type: 'mesh' }>): void {
   const start = performance.now()
   mesher = new Mesher(request)
   const counts = mesher.sectionCounts
-  const total = counts.x * counts.y * counts.z
+  const { from, to } = request.rows
+  const total = counts.x * (to - from) * counts.z
   const quads: [number, number, number] = [0, 0, 0]
   let done = 0
   let sections = 0
 
-  for (let sy = 0; sy < counts.y; sy++) {
+  for (let sy = from; sy < to; sy++) {
     for (let sz = 0; sz < counts.z; sz++) {
       for (let sx = 0; sx < counts.x; sx++) {
         const mesh = mesher.meshSection(sx, sy, sz)
