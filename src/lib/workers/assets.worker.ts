@@ -1,11 +1,12 @@
 /// <reference lib="webworker" />
 import { toAssetError } from '../assets/errors'
-import { loadClientJar } from '../assets/loadClientJar'
+import { loadClientJar, type AssetPhase } from '../assets/loadClientJar'
+import { loadResourcePack } from '../assets/loadResourcePack'
 import type { AssetsWorkerRequest, AssetsWorkerResponse } from './assetsProtocol'
 
 /**
- * Extracts and caches the assets of a client jar off the main thread. One
- * worker per jar, terminated afterwards, so the 40 MB archive is released.
+ * Extracts and caches a client jar or a resource pack off the main thread.
+ * One worker per archive, terminated afterwards, so the archive is released.
  */
 const scope = self as unknown as DedicatedWorkerGlobalScope
 
@@ -14,10 +15,15 @@ function post(message: AssetsWorkerResponse): void {
 }
 
 scope.onmessage = async (event: MessageEvent<AssetsWorkerRequest>) => {
-  if (event.data.type !== 'load-jar') return
+  const request = event.data
+  const onPhase = (phase: AssetPhase) => post({ type: 'phase', phase })
   try {
-    const result = await loadClientJar(event.data.file, (phase) => post({ type: 'phase', phase }))
-    post({ type: 'done', ...result })
+    if (request.type === 'load-jar') {
+      post({ type: 'done', ...(await loadClientJar(request.file, onPhase)) })
+    } else if (request.type === 'load-pack') {
+      const meta = await loadResourcePack(request.file, request.gameFormat, onPhase)
+      post({ type: 'pack-done', meta })
+    }
   } catch (error) {
     const assetError = toAssetError(error)
     post({ type: 'error', code: assetError.code, message: assetError.message })

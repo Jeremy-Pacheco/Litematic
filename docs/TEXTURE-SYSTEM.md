@@ -1,8 +1,7 @@
 # Sistema de texturas
 
 > **Estado:** la **carga de los recursos de Minecraft** y la **preparación de modelos y atlas** están
-> implementadas (ver [RENDERING.md](RENDERING.md)). Los resource packs
-> (`feature/texture-packs`) están **pendientes**.
+> implementadas (ver [RENDERING.md](RENDERING.md)), igual que los **resource packs** del usuario.
 
 ## Licencia de los recursos
 
@@ -87,14 +86,66 @@ Arranque ─► assets.init() ─► loadAssetsSummary() (meta + lang)
 ## Atlas y modelos (`feature/block-models`)
 
 - El atlas se construye en un worker con `OffscreenCanvas` (el de Deepslate necesita `document`), solo con las texturas que usa la paleta de la estructura.
-- Empaquetado en estantes en un cuadrado potencia de dos, hasta 4096 px.
+- Empaquetado en estantes en un cuadrado potencia de dos, hasta 4096 px. Si las texturas no caben
+  (packs de alta resolución), se reducen a 1/2, 1/4… hasta 1/16 y el visor lo avisa.
 - Texturas animadas: primer fotograma. Texturas ausentes: casilla magenta y negra de Minecraft.
 - La capa de cada textura (opaca, recortada, translúcida) se deduce de su canal alfa.
 - UV normalizadas con v hacia abajo: el visor subirá el atlas sin invertirlo.
 
 Detalles en [RENDERING.md](RENDERING.md).
 
+## Resource packs (`feature/texture-packs`)
+
+El usuario puede importar **un** resource pack `.zip` desde el diálogo de recursos (indicador
+de la barra superior). Se aplica **sobre** los recursos de su `client.jar`: lo que el pack no
+tiene se toma del juego, así que hacen falta los recursos cargados.
+
+### Qué se lee (`assets/resourcePack.ts`)
+
+- `pack.mcmeta` (obligatorio): descripción (texto o componente de texto, sin códigos `§`),
+  `pack_format` y los formatos admitidos en todas sus formas (`supported_formats` como número,
+  `[min, max]` u objeto; `min_format`/`max_format` de 1.21.9+, con `[major, minor]`).
+- `pack.png` (icono, opcional).
+- `assets/<namespace>/blockstates/*.json`, `models/**.json` y `textures/**.{png,mcmeta}`. El
+  resto (sonidos, idiomas, shaders, fuentes…) no se extrae.
+- Packs comprimidos junto con su carpeta (`MiPack/pack.mcmeta`): se detecta esa carpeta raíz.
+- **Overlays** (1.20.2+): se aplican, en el orden del pack, los que admiten el formato de los
+  recursos cargados. Los nombres de carpeta se validan (`[a-z0-9_.-]`).
+
+El resultado son archivos con las mismas rutas que el `client.jar`. El worker de modelos los
+superpone a los del juego antes de preparar los modelos y el atlas.
+
+### Compatibilidad
+
+Se compara el rango de formatos del pack con el formato de los recursos cargados. Un pack de otra
+versión **se carga igualmente** con un aviso, porque muchas texturas siguen coincidiendo. No se
+incluye una tabla de formatos → versiones, para no inventar correspondencias.
+
+### Seguridad
+
+- Mismo lector ZIP que el `client.jar`: rutas validadas (sin `..`, absolutas ni barras
+  invertidas) y límites de entradas, tamaño por archivo, tamaño total y ratio de compresión.
+- Antes de decodificar una textura se lee la cabecera PNG: si no es un PNG o mide más de
+  4096 px de ancho o 16 Mpx en total, se ignora (se usa la del juego) y se informa en el diálogo.
+  Así una imagen enorme no puede agotar la memoria al construir el atlas.
+- El contenido se trata solo como datos: JSON parseado, imágenes decodificadas por el navegador.
+  Nada del pack se ejecuta ni se inserta como HTML.
+
+### Caché y cambio de pack
+
+- Se guarda en IndexedDB (`pack:meta` con el icono, `pack:files`). Sigue en uso tras recargar
+  la página hasta que el usuario lo quita.
+- Un pack nuevo sustituye al anterior. Si la importación falla, el anterior sigue en uso.
+- Al cambiar o quitar el pack, el visor rehace modelos, atlas y geometría (unos 0,6 s en el
+  terreno de pruebas), pero **no** vuelve a leer la estructura.
+
+### Limitaciones
+
+- Un solo pack a la vez (sin pila de varios packs).
+- No se admiten formatos ajenos al juego: texturas conectadas de OptiFine (CTM), modelos
+  emisivos, etc.
+- Las animaciones muestran su primer fotograma, como las del juego.
+
 ## Pendiente
 
-- Resource packs del usuario superpuestos a los recursos por defecto (`feature/texture-packs`).
 - Patrones de estandartes, texto de carteles y colores del bioma real.

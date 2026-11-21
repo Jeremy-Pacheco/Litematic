@@ -8,6 +8,7 @@ export const ASSET_ERROR_CODES = [
   'unsafe-archive',
   'too-large',
   'not-client-jar',
+  'not-resource-pack',
   'storage-failed',
   'read-failed',
   'cancelled',

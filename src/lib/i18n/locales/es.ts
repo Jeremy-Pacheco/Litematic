@@ -225,6 +225,11 @@ export const es = {
         message:
           '{name} no contiene los recursos del juego. Si es el jar del servidor, usa el del cliente (carpeta versions).',
       },
+      'not-resource-pack': {
+        title: 'No es un resource pack',
+        message:
+          '{name} no tiene pack.mcmeta. Comprueba que es un resource pack de Minecraft Java.',
+      },
       'storage-failed': {
         title: 'No se han podido guardar los recursos',
         message: 'El navegador no permite guardar datos (modo privado o almacenamiento bloqueado).',
@@ -322,6 +327,38 @@ export const es = {
     blockEntity: 'Datos del bloque',
     more: '… y {count} más',
     hiddenLayer: 'Su capa está oculta.',
+  },
+  pack: {
+    title: 'Resource pack',
+    intro:
+      'Importa un resource pack (.zip) para ver la estructura con sus texturas y modelos. Lo que falte en el pack se toma de tus recursos de Minecraft.',
+    needAssets: 'Carga primero los recursos de Minecraft: el pack se aplica sobre ellos.',
+    select: 'Importar resource pack',
+    replace: 'Cambiar de pack',
+    remove: 'Quitar pack',
+    icon: 'Icono del pack',
+    format: 'Formato',
+    compatibility: 'Compatibilidad',
+    compatible: 'Hecho para esta versión',
+    otherVersion: 'Hecho para otra versión (formatos {min}–{max}; tus recursos usan el {game})',
+    unknown: 'Desconocida',
+    files: 'Archivos usados',
+    overlays: 'Overlays aplicados',
+    rejected: 'Texturas ignoradas',
+    rejectedValue: '{count}: demasiado grandes o no válidas (se usan las del juego)',
+    noFiles: 'Este pack no cambia ningún bloque: no tiene texturas, modelos ni estados de bloque.',
+    readyTitle: 'Resource pack cargado',
+    ready: '{name}: la vista 3D usa sus texturas.',
+    otherVersionTitle: 'Pack de otra versión',
+    otherVersionMessage:
+      '{name} se hizo para otra versión de Minecraft. Puede que algunas texturas no coincidan.',
+    removedTitle: 'Resource pack quitado: se usan las texturas del juego',
+    reducedTitle: 'Texturas reducidas',
+    reduced:
+      'Las texturas del pack no caben a su resolución en una sola textura de la GPU y se muestran a 1/{scale}.',
+    indicator: 'Pack: {name}',
+    notZipTitle: 'No es un archivo .zip',
+    notZip: '{name} no es un archivo ZIP.',
   },
   toast: {
     region: 'Notificaciones',

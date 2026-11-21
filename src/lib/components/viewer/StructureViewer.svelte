@@ -10,6 +10,7 @@
   } from '../../managers/StructureManager'
   import { assets } from '../../stores/assets.svelte'
   import { layers } from '../../stores/layers.svelte'
+  import { resourcePack } from '../../stores/resourcePack.svelte'
   import { theme } from '../../stores/theme.svelte'
   import { toasts } from '../../stores/toasts.svelte'
   import { backgroundColor, viewer } from '../../stores/viewer.svelte'
@@ -65,6 +66,13 @@
       const shown = await manager.show(target, (p) => (progress = p))
       if (target !== structure) return
       result = shown
+      if (shown.textureScale > 1) {
+        toasts.push({
+          kind: 'info',
+          title: { key: 'pack.reducedTitle' },
+          message: { key: 'pack.reduced', params: { scale: shown.textureScale } },
+        })
+      }
       if (shown.missingBlocks.length > 0) {
         toasts.push({
           kind: 'info',
@@ -94,8 +102,10 @@
     })
   })
 
-  // (Re)build the 3D view when the structure or the game assets change.
+  // (Re)build the 3D view when the structure, the game assets or the resource
+  // pack change. A new pack rebuilds textures and geometry, not the structure.
   $effect(() => {
+    void resourcePack.revision
     if (scene && assetsReady) void load(structure)
   })
 

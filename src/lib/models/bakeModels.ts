@@ -12,6 +12,8 @@ export interface BakedModels {
   missingBlocks: string[]
   /** Textures referenced but absent from the game files. */
   missingTextures: string[]
+  /** 1 when textures keep their resolution; 2, 4… when they were reduced to fit the atlas. */
+  textureScale: number
   durationMs: number
 }
 
@@ -32,6 +34,7 @@ export async function bakeModels(
     atlas: { size: atlas.size, pixels: atlas.pixels },
     missingBlocks,
     missingTextures: atlas.missingTextures,
+    textureScale: atlas.scale,
     durationMs: Math.round(performance.now() - start),
   }
 }
