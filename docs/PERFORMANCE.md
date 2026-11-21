@@ -8,7 +8,12 @@ indicando la estructura de prueba, el equipo y el navegador utilizados.
 
 ## Compilación actual
 
-| Archivo     |   Tamaño |    gzip |
-| ----------- | -------: | ------: |
-| `index.js`  | 23,05 kB | 9,34 kB |
-| `index.css` |  0,34 kB | 0,23 kB |
+Tras `feature/app-shell` (Svelte, interfaz base, temas e idiomas):
+
+| Archivo     |   Tamaño |     gzip |
+| ----------- | -------: | -------: |
+| `index.js`  | 62,28 kB | 24,36 kB |
+| `index.css` |  8,25 kB |  2,16 kB |
+
+La interfaz no hace trabajo continuo: no hay bucles de animación ni temporizadores salvo el
+cierre automático de las notificaciones.
