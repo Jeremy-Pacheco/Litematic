@@ -1,15 +1,27 @@
-import { GROUP_COUNT, INNER_GROUP, type BakedState, type QuadGeometry } from '../models/bakedTypes'
+import {
+  FLUID_NONE,
+  GROUP_COUNT,
+  INNER_GROUP,
+  type BakedState,
+  type QuadGeometry,
+} from '../models/bakedTypes'
 import { RENDER_LAYERS } from '../models/renderLayer'
 import type { Vec3 } from '../types/structure'
 
 /**
- * Builds the geometry of a structure section by section (16×16×16 blocks):
+ * Builds the geometry of a structure section by section (32 × 16 × 32 blocks):
  * copies the baked quads of every block and drops the faces hidden by a
  * neighbor. One mesh per render layer per section keeps draw calls low and
  * lets the renderer skip off-screen sections.
  */
 
-export const SECTION_SIZE = 16
+/**
+ * Section size: 16 layers high, so the layer system can hide whole sections
+ * by rows of 16; 32 blocks wide and long, so a large structure needs a quarter
+ * of the meshes (and draw calls) of 16³ sections.
+ */
+export const SECTION_HEIGHT = 16
+export const SECTION_WIDTH = 32
 
 /** Neighbor offset of each side, in `FACES` order (up, down, north, south, east, west). */
 const OFFSETS: readonly (readonly [number, number, number])[] = [
@@ -49,15 +61,23 @@ export interface LayerMesh {
 }
 
 export interface SectionMesh {
-  /** Section coordinates (multiply by SECTION_SIZE for the block origin). */
+  /** Section coordinates (× SECTION_WIDTH in X and Z, × SECTION_HEIGHT in Y). */
   section: Vec3
   /** One entry per render layer (opaque, cutout, translucent). */
   layers: (LayerMesh | null)[]
 }
 
 export interface MesherInput {
+  /** Size of the whole structure. */
   size: Vec3
+  /**
+   * Blocks of the whole structure, or of a slab of whole layers starting at
+   * `yStart` (a worker meshing part of the structure only needs its layers
+   * plus one above and one below).
+   */
   blocks: Uint16Array | Uint32Array
+  /** First layer held by `blocks` (0 for the whole structure). */
+  yStart?: number
   states: readonly MesherState[]
 }
 
@@ -75,7 +95,10 @@ interface Box {
 }
 
 /** The parts of a baked state the mesher needs. */
-export type MesherState = Pick<BakedState, 'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty'>
+export type MesherState = Pick<
+  BakedState,
+  'geometry' | 'opaqueFaces' | 'fullFaces' | 'empty' | 'fluid' | 'fluidFull'
+>
 
 /**
  * Per-state geometry with the directional shade already applied to the tint
@@ -92,15 +115,25 @@ interface PreparedGroup {
 export class Mesher {
   readonly #size: Vec3
   readonly #blocks: Uint16Array | Uint32Array
+  /** Layers held by `#blocks`: [`#yStart`, `#yEnd`). */
+  readonly #yStart: number
+  readonly #yEnd: number
   readonly #states: readonly MesherState[]
   readonly #prepared: (PreparedGroup | null)[][][]
+  /** Full-height shape of fluid blocks (`null` for other states). */
+  readonly #preparedFull: ((PreparedGroup | null)[][] | null)[]
 
   constructor(input: MesherInput) {
     this.#size = input.size
     this.#blocks = input.blocks
+    this.#yStart = input.yStart ?? 0
+    this.#yEnd = this.#yStart + input.blocks.length / (input.size.x * input.size.z)
     this.#states = input.states
-    this.#prepared = input.states.map((state) =>
-      state.geometry.map((groups) => groups.map((g) => (g ? prepare(g) : null))),
+    const prepareAll = (geometry: (QuadGeometry | null)[][]) =>
+      geometry.map((groups) => groups.map((g) => (g ? prepare(g) : null)))
+    this.#prepared = input.states.map((state) => prepareAll(state.geometry))
+    this.#preparedFull = input.states.map((state) =>
+      state.fluidFull ? prepareAll(state.fluidFull) : null,
     )
   }
 
@@ -108,24 +141,24 @@ export class Mesher {
   get sectionCounts(): Vec3 {
     const { x, y, z } = this.#size
     return {
-      x: Math.ceil(x / SECTION_SIZE),
-      y: Math.ceil(y / SECTION_SIZE),
-      z: Math.ceil(z / SECTION_SIZE),
+      x: Math.ceil(x / SECTION_WIDTH),
+      y: Math.ceil(y / SECTION_HEIGHT),
+      z: Math.ceil(z / SECTION_WIDTH),
     }
   }
 
   meshSection(sx: number, sy: number, sz: number): SectionMesh {
     const { x: X, y: Y, z: Z } = this.#size
-    const x0 = sx * SECTION_SIZE
-    const y0 = sy * SECTION_SIZE
-    const z0 = sz * SECTION_SIZE
+    const x0 = sx * SECTION_WIDTH
+    const y0 = sy * SECTION_HEIGHT
+    const z0 = sz * SECTION_WIDTH
     const box = {
       x0,
       y0,
       z0,
-      x1: Math.min(X, x0 + SECTION_SIZE),
-      y1: Math.min(Y, y0 + SECTION_SIZE),
-      z1: Math.min(Z, z0 + SECTION_SIZE),
+      x1: Math.min(X, x0 + SECTION_WIDTH),
+      y1: Math.min(Y, y0 + SECTION_HEIGHT),
+      z1: Math.min(Z, z0 + SECTION_WIDTH),
     }
     return { section: { x: sx, y: sy, z: sz }, layers: this.#meshBox(box, null) }
   }
@@ -159,10 +192,13 @@ export class Mesher {
     for (let y = y0; y < y1; y++) {
       for (let z = z0; z < z1; z++) {
         for (let x = x0; x < x1; x++) {
-          const stateIndex = this.#blocks[(y * Z + z) * X + x]
+          const stateIndex = this.#blocks[((y - this.#yStart) * Z + z) * X + x]
           const state = this.#states[stateIndex]
           if (!state || state.empty) continue
-          const prepared = this.#prepared[stateIndex]
+          // A fluid with the same fluid above fills its whole block.
+          const full = this.#preparedFull[stateIndex]
+          const prepared =
+            full && this.#fluidAt(x, y + 1, z) === state.fluid ? full : this.#prepared[stateIndex]
           for (const layer of RENDER_LAYERS) {
             const groups = prepared[layer]
             for (let group = firstGroup; group <= lastGroup; group++) {
@@ -213,6 +249,19 @@ export class Mesher {
     return layers
   }
 
+  /** Fluid filling a position (`FLUID_NONE` outside the structure). */
+  #fluidAt(x: number, y: number, z: number): number {
+    const index = this.#indexAt(x, y, z)
+    return index < 0 ? FLUID_NONE : (this.#states[this.#blocks[index]]?.fluid ?? FLUID_NONE)
+  }
+
+  /** Index in `#blocks` of a position, or -1 outside the structure or the slab. */
+  #indexAt(x: number, y: number, z: number): number {
+    const { x: X, z: Z } = this.#size
+    if (x < 0 || z < 0 || x >= X || z >= Z || y < this.#yStart || y >= this.#yEnd) return -1
+    return ((y - this.#yStart) * Z + z) * X + x
+  }
+
   /**
    * A face on side `group` is hidden when the neighbor covers the opposite
    * side with opaque faces, or when both are the same see-through block
@@ -230,15 +279,17 @@ export class Mesher {
     const nx = x + dx
     const ny = y + dy
     const nz = z + dz
-    const { x: X, y: Y, z: Z } = this.#size
-    if (nx < 0 || ny < 0 || nz < 0 || nx >= X || ny >= Y || nz >= Z) return false
-    const neighborIndex = this.#blocks[(ny * Z + nz) * X + nx]
+    const position = this.#indexAt(nx, ny, nz)
+    if (position < 0) return false
+    const neighborIndex = this.#blocks[position]
     const neighbor = this.#states[neighborIndex]
     if (!neighbor || neighbor.empty) return false
     const opposite = 1 << OPPOSITE[group]
     if (neighbor.opaqueFaces & opposite) return true
+    // Fluid next to the same fluid (water beside water or a waterlogged block).
+    const state = this.#states[stateIndex]
+    if (state.fluidFull && neighbor.fluid === state.fluid) return true
     if (layer !== 0 && neighborIndex === stateIndex) {
-      const state = this.#states[stateIndex]
       return (state.fullFaces & (1 << group)) !== 0 && (neighbor.fullFaces & opposite) !== 0
     }
     return false

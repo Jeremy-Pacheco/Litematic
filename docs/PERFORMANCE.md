@@ -192,6 +192,41 @@ niveles y 64 hijos por nodo, así un cofre lleno de cajas de shulker no bloquea 
 - Pack de pruebas con 13 texturas de 1024 px en el terreno de 2,9 M bloques: modelos y atlas en
   ~1,7 s (decodificar 13 Mpx), texturas reducidas a 1/2 para caber en un atlas de 4096 px.
 
+## Optimización final (`feature/performance-optimization`)
+
+Medido con la GPU real (RTX 3070) y tres estructuras: el terreno de pruebas, una «esponja» de
+256 × 128 × 256 con un 25 % de bloques al azar (el peor caso de caras visibles) y una estructura
+de 512 × 256 × 512 con 33,5 M de bloques. Durante las mediciones posteriores a la primera el equipo
+estaba más cargado (la versión de partida medida de nuevo también iba el doble de lenta), así que
+cada mejora se comparó con la anterior **en la misma sesión**.
+
+| Estructura      | Medida               |         Antes |                           Después |
+| --------------- | -------------------- | ------------: | --------------------------------: |
+| 512 × 256 × 512 | Triángulos           |    25 236 920 |                     **3 074 972** |
+|                 | Geometría            |      1 156 MB |                        **129 MB** |
+|                 | Memoria JS           |      1 370 MB |                   **~200–280 MB** |
+|                 | _Draw calls_         |         7 263 |                         **2 460** |
+|                 | Frame (mediana)      |         30 ms | **21 ms** (con el equipo cargado) |
+|                 | Hasta verse          |         9,0 s | **5,1 s** (con el equipo cargado) |
+| Esponja         | _Draw calls_ / frame | 4 099 / 20 ms |                **1 027 / 9,5 ms** |
+| Terreno         | Triángulos / frame   |  2,1 M / 5 ms |                 **0,63 M / 3 ms** |
+
+Por mejora, en la misma sesión:
+
+| Cambio                           | Efecto medido                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| Caras ocultas entre fluidos      | 512³: 25,2 M → 3,1 M triángulos; terreno 2,1 M → 0,63 M                       |
+| Liberar los arrays tras subirlos | Memoria JS de la esponja 952 → ~350–470 MB, sin cambio de tiempos             |
+| Mallado en paralelo (4 workers)  | Preparación y geometría de 512³: 11,4 s → 3,7 s; esponja 4,1 s → 1,3 s        |
+| Secciones de 32 × 16 × 32        | 512³: 6 776 → 2 460 _draw calls_, 55,7 → 20,9 ms por frame; terreno 10 → 3 ms |
+
+La memoria JS fluctúa según cuándo pase el recolector de basura; los valores son orientativos.
+
+Descartado: `SharedArrayBuffer` (exige cabeceras COOP/COEP en el hosting y el reparto por bandas
+ya evita copiar el array entero a cada worker). Pendiente de valorar si hiciera falta: comprimir las
+posiciones de los vértices (−30 % de memoria de GPU) y aumentar el presupuesto de subida por frame
+en equipos rápidos (la esponja tarda en verse sobre todo por subir 890 MB a la GPU).
+
 ## Compilación
 
 Tras `feature/structure-viewer`:

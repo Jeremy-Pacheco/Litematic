@@ -37,4 +37,19 @@ export interface BakedState {
   missing: boolean
   /** Nothing to draw (air). */
   empty: boolean
+  /**
+   * Fluid that fills the position: `FLUID_NONE`, `FLUID_WATER` (water,
+   * waterlogged blocks, kelp, seagrass, bubble columns) or `FLUID_LAVA`. Faces
+   * of a fluid block next to the same fluid are hidden, as in the game.
+   */
+  fluid: number
+  /**
+   * Fluid blocks only: geometry with the same fluid above (full height, no
+   * top face). `null` for every other block.
+   */
+  fluidFull: (QuadGeometry | null)[][] | null
 }
+
+export const FLUID_NONE = 0
+export const FLUID_WATER = 1
+export const FLUID_LAVA = 2

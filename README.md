@@ -2,14 +2,14 @@
 
 Visor 3D de estructuras de Minecraft para el navegador, inspirado en el mod Litematica.
 
-> **Estado:** en desarrollo. La app abre archivos `.litematic`, `.schem` y `.schematic`,
+> **Estado:** las 13 funcionalidades del plan inicial están implementadas. La app abre archivos `.litematic`, `.schem` y `.schematic`,
 > comprueba que son válidos y los lee por completo (bloques, paleta, regiones y entidades; los
 > `.schematic` antiguos se traducen a bloques modernos). Los **muestra en 3D con las texturas de
 > tu propio Minecraft** (cargando su `client.jar`) y calcula la **lista de materiales** con lo
 > que te falta, y permite **construir por capas** con su progreso. Al hacer clic en un bloque
-> muestra su nombre, posición, propiedades y datos. También admite **resource packs** `.zip`.
-> Consulta
-> [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada funcionalidad.
+> muestra su nombre, posición, propiedades y datos. También admite **resource packs** `.zip` y
+> estructuras de decenas de millones de bloques (ver [docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
+> Consulta [docs/FEATURES.md](docs/FEATURES.md) para ver el estado de cada funcionalidad.
 
 ## Objetivo
 

@@ -11,7 +11,8 @@ import type { BakedModels } from '../models/bakeModels'
 import type { Structure } from '../types/structure'
 import type { LayerRange } from '../viewer/layers'
 import { createAtlasTexture, createLayerMaterials, LAYER_RENDER_ORDER } from '../viewer/materials'
-import { SECTION_SIZE, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
+import { planMeshing, workerCount } from '../viewer/meshingPlan'
+import { SECTION_HEIGHT, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
 import type { MesherRequest, MesherResponse, MesherStats } from '../workers/mesherProtocol'
 import { ModelManager } from './ModelManager'
 import type { SceneManager } from './SceneManager'
@@ -138,17 +139,43 @@ export class StructureManager {
     this.#texture = null
   }
 
+  /**
+   * Meshes the structure with one or more workers (see `planMeshing`). The
+   * first worker receives the whole block array and stays alive for the
+   * layer caps; the others receive only their band of layers and end when
+   * they finish.
+   */
   #mesh(
     structure: Structure,
     models: BakedModels,
     onProgress?: (p: ShowProgress) => void,
   ): Promise<MesherStats> {
-    const worker = new Worker(new URL('../workers/mesher.worker.ts', import.meta.url), {
-      type: 'module',
-    })
-    this.#worker = worker
+    const cores = globalThis.navigator?.hardwareConcurrency ?? 2
+    const tasks = planMeshing(structure.layerBlocks, workerCount(structure.nonAirBlocks, cores))
+    const layerSize = structure.size.x * structure.size.z
+    const states = models.states.map(
+      ({ geometry, opaqueFaces, fullFaces, empty, fluid, fluidFull }) => ({
+        geometry,
+        opaqueFaces,
+        fullFaces,
+        empty,
+        fluid,
+        fluidFull,
+      }),
+    )
+    const workers = tasks.map(
+      () => new Worker(new URL('../workers/mesher.worker.ts', import.meta.url), { type: 'module' }),
+    )
+    this.#worker = workers[0] ?? null
+
     return new Promise<MesherStats>((resolve, reject) => {
       let settled = false
+      let pending = workers.length
+      const done = new Array<number>(workers.length).fill(0)
+      const totals = new Array<number>(workers.length).fill(1)
+      const stats: MesherStats = { sections: 0, quads: [0, 0, 0], durationMs: 0 }
+
+      const stopHelpers = () => workers.slice(1).forEach((w) => w.terminate())
       const fail = (error: Error) => {
         if (settled) {
           // After the structure is shown, only caps can fail: the cut stays
@@ -158,59 +185,78 @@ export class StructureManager {
         }
         settled = true
         this.#cancel = null
+        stopHelpers()
         reject(error)
       }
       this.#cancel = () => {
         if (settled) return
         settled = true
-        worker.terminate()
+        workers.forEach((w) => w.terminate())
         this.#worker = null
         reject(new DOMException('Meshing was cancelled', 'AbortError'))
       }
 
-      worker.onmessage = (event: MessageEvent<MesherResponse>) => {
-        const message = event.data
-        if (message.type === 'section') {
-          this.#addSection(message.mesh)
-          onProgress?.({ phase: 'meshing', fraction: message.done / message.total })
-        } else if (message.type === 'cap') {
-          this.#addCap(message.y, message.side, message.layers)
-        } else if (message.type === 'done') {
-          settled = true
-          this.#cancel = null
-          // Report completion once every section is actually in the scene.
-          void this.#whenDrained().then(() => resolve(message.stats))
-        } else {
-          fail(new Error(message.message))
+      workers.forEach((worker, i) => {
+        worker.onmessage = (event: MessageEvent<MesherResponse>) => {
+          const message = event.data
+          if (message.type === 'section') {
+            if (settled) return
+            this.#addSection(message.mesh)
+            done[i] = message.done
+            totals[i] = message.total
+            const fraction = done.reduce((a, b) => a + b, 0) / totals.reduce((a, b) => a + b, 0)
+            onProgress?.({ phase: 'meshing', fraction })
+          } else if (message.type === 'cap') {
+            this.#addCap(message.y, message.side, message.layers)
+          } else if (message.type === 'done') {
+            stats.sections += message.stats.sections
+            message.stats.quads.forEach((q, layer) => (stats.quads[layer] += q))
+            stats.durationMs = Math.max(stats.durationMs, message.stats.durationMs)
+            if (i > 0) worker.terminate()
+            if (--pending > 0 || settled) return
+            settled = true
+            this.#cancel = null
+            // Report completion once every section is actually in the scene.
+            void this.#whenDrained().then(() => resolve(stats))
+          } else {
+            fail(new Error(message.message))
+          }
         }
-      }
-      worker.onerror = (event: ErrorEvent) => {
-        event.preventDefault()
-        fail(new Error(event.message || 'Mesher worker error'))
-      }
+        worker.onerror = (event: ErrorEvent) => {
+          event.preventDefault()
+          fail(new Error(event.message || 'Mesher worker error'))
+        }
 
-      // The block array is copied (not transferred): the main thread keeps it
-      // for the material list and, later, the block inspector.
-      const request: MesherRequest = {
-        type: 'mesh',
-        size: structure.size,
-        blocks: structure.blocks,
-        states: models.states.map(({ geometry, opaqueFaces, fullFaces, empty }) => ({
-          geometry,
-          opaqueFaces,
-          fullFaces,
-          empty,
-        })),
+        // The first worker gets the whole array (copied: the main thread keeps
+        // it for the material list, the inspector and the layers); the others
+        // a copy of their layers only, transferred.
+        const { rows, layers } = tasks[i]
+        const blocks =
+          i === 0
+            ? structure.blocks
+            : structure.blocks.slice(layers.from * layerSize, layers.to * layerSize)
+        const request: MesherRequest = {
+          type: 'mesh',
+          size: structure.size,
+          blocks,
+          yStart: i === 0 ? 0 : layers.from,
+          rows,
+          states,
+        }
+        worker.postMessage(request, i === 0 ? [] : [blocks.buffer as ArrayBuffer])
+      })
+      if (workers.length === 0) {
+        settled = true
+        resolve(stats)
       }
-      worker.postMessage(request)
     })
   }
 
   #sectionVisible(sy: number): boolean {
     const range = this.#range
     if (!range) return true
-    const y0 = sy * SECTION_SIZE
-    return y0 <= range.max && y0 + SECTION_SIZE - 1 >= range.min
+    const y0 = sy * SECTION_HEIGHT
+    return y0 <= range.max && y0 + SECTION_HEIGHT - 1 >= range.min
   }
 
   /** Caps needed by the current range: the top of the highest visible level, the bottom of the lowest. */
@@ -334,12 +380,25 @@ function capKey(y: number, side: CapSide): string {
   return `${side}:${y}`
 }
 
+/**
+ * Geometry of one layer mesh. Its arrays are only needed until they reach the
+ * GPU: they are released after the upload, so each vertex is not kept twice
+ * (in the GPU and in JavaScript). Nothing reads them later: picking and layers
+ * work on the block array, and a lost WebGL context rebuilds the structure.
+ */
 function toGeometry(layer: LayerMesh): BufferGeometry {
   const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(layer.positions, 3))
-  geometry.setAttribute('uv', new BufferAttribute(layer.uvs, 2, true))
-  geometry.setAttribute('color', new BufferAttribute(layer.colors, 3, true))
-  geometry.setIndex(new BufferAttribute(layer.indices, 1))
+  const attribute = (array: ArrayLike<number>, size: number, normalized = false) =>
+    new BufferAttribute(array as Float32Array, size, normalized).onUpload(releaseArray)
+  geometry.setAttribute('position', attribute(layer.positions, 3))
+  geometry.setAttribute('uv', attribute(layer.uvs, 2, true))
+  geometry.setAttribute('color', attribute(layer.colors, 3, true))
+  geometry.setIndex(attribute(layer.indices, 1))
+  // Bounds for frustum culling are computed before the arrays are released.
   geometry.computeBoundingSphere()
   return geometry
+}
+
+function releaseArray(this: BufferAttribute): void {
+  ;(this as unknown as { array: null }).array = null
 }
