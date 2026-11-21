@@ -99,6 +99,29 @@ export function finishStructure(parts: StructureParts): Structure {
   return { ...parts, blockCounts, layerBlocks, nonAirBlocks: blocks.length - blockCounts[0] }
 }
 
+/**
+ * Drops the palette states that no position uses (air at index 0 is always
+ * kept), remapping `blocks` in place. Needed after a pass that rewrites
+ * blocks, so replaced defaults do not linger in the palette. Uses the counts
+ * of `finishStructure`, so it only walks the blocks when something is unused.
+ */
+export function dropUnusedStates(structure: Structure): Structure {
+  const { palette, blockCounts, blocks } = structure
+  if (blockCounts.every((count, i) => count > 0 || i === 0)) return structure
+
+  const remap = new Uint32Array(palette.length)
+  const states: BlockState[] = []
+  const counts: number[] = []
+  palette.forEach((state, i) => {
+    if (i !== 0 && blockCounts[i] === 0) return
+    remap[i] = states.length
+    states.push(state)
+    counts.push(blockCounts[i])
+  })
+  for (let i = 0; i < blocks.length; i++) blocks[i] = remap[blocks[i]]
+  return { ...structure, palette: states, blockCounts: Uint32Array.from(counts) }
+}
+
 export function emptyWarnings(): StructureWarnings {
   return {
     invalidPaletteIndices: 0,

@@ -125,7 +125,7 @@ export const es = {
     unknownLegacy:
       '{count} bloques antiguos no tienen un equivalente conocido y se han leído como aire.',
     approximateLegacy:
-      'Archivo anterior a Minecraft 1.13: los bloques que dependen de sus vecinos (vallas, escaleras, puertas…) pueden verse con su forma por defecto.',
+      'Archivo anterior a Minecraft 1.13: algunas calaveras o estandartes no tienen sus datos en el archivo y se muestran con su aspecto por defecto.',
     newerThanAssets:
       'La estructura es de una versión más nueva (DataVersion {dataVersion}) que los recursos cargados ({version}, DataVersion {assetsDataVersion}): algunos bloques pueden no tener nombre ni textura.',
   },

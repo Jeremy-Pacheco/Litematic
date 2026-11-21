@@ -219,17 +219,68 @@ Cada `id:meta` se traduce a un blockstate moderno con la tabla `src/lib/data/leg
 - La tabla se carga **bajo demanda** con `import()` dentro del worker: es un fragmento aparte
   (99 kB, 12,3 kB con gzip) que solo se descarga al abrir un `.schematic`.
 
+### Estados que no estaban en `id:meta`
+
+Antes de la 1.13 parte del aspecto de un bloque no se guardaba en `id:meta`: el juego lo
+calculaba al dibujar a partir de los vecinos, o lo leía del block entity. La tabla solo puede dar
+un valor por defecto, así que después de traducir los IDs el parser hace dos pasos, como el
+convertidor de mundos de la 1.13:
+
+**1. Block entities** (`parsers/mcedit/legacyBlockEntities.ts`). Se aceptan los dos estilos de
+ID (`Bed` y `minecraft:bed`). Un block entity sobre un bloque que no le corresponde se ignora.
+
+| Block entity          | Campo                                            | Resultado                                      |
+| --------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `Bed`                 | `color` (orden de la lana)                       | `red_bed` → `<color>_bed`                      |
+| `Banner`              | `Base` (daño del tinte: 0 = negro)               | `white_banner` → `<color>_banner`              |
+| `Skull`               | `SkullType` (0–5), `Rot` (0–15)                  | Tipo de cabeza; `rotation` si está en el suelo |
+| `FlowerPot`           | `Item` (texto, o número antes de la 1.8), `Data` | `potted_<planta>`; vacía si no hay planta      |
+| `Music` / `noteblock` | `note`                                           | `note`                                         |
+
+Los colores de los patrones de los estandartes también eran daños de tinte; se convierten al
+orden de la 1.13 (`15 − Color`) en el NBT del block entity, que es lo que lee el visor. El resto
+del NBT se conserva sin convertir.
+
+**2. Vecinos** (`parsers/mcedit/legacyNeighbors.ts`). Reglas del `updateShape` del juego, en su
+forma de la 1.16+ (la de los modelos que usa el visor):
+
+| Bloques                              | Regla                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Vallas                               | Se conectan a vallas del mismo material, a puertas de valla de lado y a bloques sólidos                |
+| Paneles y barrotes                   | A paneles, barrotes, muros y bloques sólidos                                                           |
+| Muros                                | Lados `none`/`low`/`tall` (alto si el bloque de encima lo cubre) y poste (`up`)                        |
+| Puertas de valla                     | `in_wall` junto a muros                                                                                |
+| Escaleras                            | `shape` según las escaleras de delante y de detrás (`getStairsShape`)                                  |
+| Puertas                              | Cada mitad completa sus propiedades con la otra (orientación, abierta, bisagra, activada)              |
+| Plantas dobles                       | La mitad superior toma el tipo de la inferior                                                          |
+| Redstone                             | `none`/`side`/`up`; una línea se extiende por sus dos extremos; un punto aislado sigue siendo un punto |
+| Cuerda de trampa                     | Conexiones con cuerda y ganchos orientados hacia ella                                                  |
+| Enredaderas                          | `up` bajo un bloque sólido                                                                             |
+| Chorus                               | Conexiones con chorus (y con piedra del End debajo)                                                    |
+| Tallos de calabaza y sandía (edad 7) | `attached_*_stem` hacia el fruto                                                                       |
+| Hierba, podzol, micelio              | `snowy` bajo nieve                                                                                     |
+| Cofres                               | Dos cofres iguales con la misma orientación forman uno doble (`left`/`right`)                          |
+| Bloques musicales                    | `instrument` según el bloque de debajo                                                                 |
+
+- "Sólido" se decide por nombre con listas explícitas (bloques completos menos losas, escaleras,
+  plantas, cristales en paneles, etc.). No se usan los modelos: el parser no depende del
+  `client.jar`.
+- Lo que hay fuera de la estructura se considera aire, como hace WorldEdit.
+- La estructura se recorre de arriba abajo: el muro de encima ya está calculado cuando se mira.
+- Los estados por defecto que dejan de usarse se quitan de la paleta.
+- El aviso `approximateLegacyStates` solo aparece si hay calaveras o estandartes sin block entity.
+
 ### Limitaciones
 
-- **Estados que dependen de los vecinos**: antes de la 1.13 Minecraft no guardaba la forma de las
-  escaleras, las conexiones de vallas/paneles/muros, el redstone, la mitad superior de las puertas,
-  etc.; los calculaba al vuelo. La tabla da un valor por defecto y la app lo indica siempre con el
-  aviso `approximateLegacyStates`. Recalcularlos a partir de los vecinos es una mejora pendiente.
-- **Bloques que dependen de su block entity** (color de camas y estandartes, tipo de calavera,
-  planta de una maceta): se muestran con el valor por defecto de la tabla. WorldEdit los corrige
-  leyendo el block entity; queda como mejora pendiente.
+- **Instrumentos**: el juego los decidía por el material del bloque de debajo; aquí se deducen
+  del nombre (madera, piedra, arena, cristal, lana…), que cubre los bloques de la 1.12 pero puede
+  fallar en casos raros.
+- **"Sólido"** también se decide por nombre. Casos límite (pistones extendidos, la parte trasera
+  de una escalera) no conectan aunque en el juego sí lo hagan.
 - **IDs de mods** (`SchematicaMapping`) no están en la tabla: se leen como aire con aviso.
-- El NBT de los block entities se conserva en su formato antiguo, sin convertir.
+- **Nombres de la 1.13 que cambiaron después**: la tabla da nombres de la 1.13 (`sign`,
+  `wall_sign`, `grass`, `grass_path`…) que en versiones posteriores se renombraron (`oak_sign`,
+  `short_grass`, `dirt_path`…) y que los recursos actuales no tienen. Pendiente.
 - La tabla traduce IDs **numéricos**. Los `.litematic` y Sponge v1 anteriores a la 1.13 guardan
   **nombres de la 1.12** (`minecraft:stone[variant=granite]`), que esta tabla no cubre; siguen
   mostrando el aviso `legacyBlockNames`.
@@ -240,6 +291,13 @@ No se ha dispuesto de un `.schematic` real. Se ha probado con archivos generados
 de WorldEdit (IDs de más de 255 con `AddBlocks` y `Add`, metadatos, block entities, entidades) y,
 en el navegador, con una casa de 7 × 5 × 7 (suelo, paredes, tejado, cristal, puerta, valla,
 escaleras y cofre): 173 bloques y 9 estados, como se esperaba.
+
+Los estados de vecinos y de block entities se probaron con tests por regla y con un `.schematic`
+generado con todos los casos (24 × 5 × 12), cuyos 46 estados resultantes se pasaron por los
+modelos reales del `client.jar` 26.3: ninguno queda sin modelo y la geometría cambia como debe
+(un muro con los valores de la tabla, `east=false`…, no tiene ninguna cara en los modelos
+actuales; corregido tiene 10–16; una valla pasa de 6 caras, solo el poste, a 26). No se comprobó
+a ojo en el navegador.
 
 ## Flujo de lectura
 
