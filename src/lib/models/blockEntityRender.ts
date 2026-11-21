@@ -1,3 +1,4 @@
+import { DYE_COLORS as DYES } from '../constants/dyes'
 import { isNbtCompound, isNbtList, type NbtCompound } from '../types/nbt'
 import { blockIndex, type BlockState, type Structure } from '../types/structure'
 
@@ -29,25 +30,6 @@ export interface RenderVariants {
   blocks: Uint16Array | Uint32Array
   variants: number
 }
-
-const DYES = [
-  'white',
-  'orange',
-  'magenta',
-  'light_blue',
-  'yellow',
-  'lime',
-  'pink',
-  'gray',
-  'light_gray',
-  'cyan',
-  'purple',
-  'blue',
-  'brown',
-  'green',
-  'red',
-  'black',
-]
 
 /** Pattern codes of banners saved before 1.20.5. */
 const LEGACY_PATTERNS: Readonly<Record<string, string>> = {

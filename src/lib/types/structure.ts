@@ -65,8 +65,9 @@ export interface StructureWarnings {
   /** Pre-1.13 numeric ids with no known modern equivalent; read as air. */
   unknownLegacyBlocks: number
   /**
-   * Converted from numeric ids: states that Minecraft computed from neighbors
-   * (fence connections, stair shapes, door halves…) use default values.
+   * Converted from numeric ids: some skulls or banners had no block entity,
+   * so their type or color is the default. (States derived from neighbors and
+   * other block entity data are computed by the parser.)
    */
   approximateLegacyStates: boolean
 }

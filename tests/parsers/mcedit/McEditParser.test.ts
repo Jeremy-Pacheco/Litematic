@@ -43,12 +43,14 @@ describe('parseMcEditWith', () => {
     expect(s.nonAirBlocks).toBe(2)
   })
 
-  it('keeps the properties of the translated state', () => {
+  it('keeps the properties of the translated state (shape recomputed)', () => {
     const s = parse({ size: [1, 1, 1], ids: [53], metas: [3] })
     expect(s.palette[1]).toEqual({
       name: 'minecraft:oak_stairs',
-      properties: { half: 'bottom', shape: 'outer_right', facing: 'north' },
+      properties: { half: 'bottom', shape: 'straight', facing: 'north' },
     })
+    // The table default (outer_right) is no longer used, so it is dropped.
+    expect(s.palette).toHaveLength(2)
   })
 
   it('combines AddBlocks nibbles for ids above 255 (even: low, odd: high)', () => {
@@ -66,11 +68,29 @@ describe('parseMcEditWith', () => {
     expect(s.warnings.unknownLegacyBlocks).toBe(1)
   })
 
-  it('reuses palette entries and always flags approximate legacy states', () => {
+  it('reuses palette entries', () => {
     const s = parse({ size: [3, 1, 1], ids: [1, 1, 1] })
     expect(s.palette.map((p) => p.name)).toEqual(['minecraft:air', 'minecraft:stone'])
-    expect(s.warnings.approximateLegacyStates).toBe(true)
+    expect(s.warnings.approximateLegacyStates).toBe(false)
     expect(s.warnings.legacyBlockNames).toBe(false)
+  })
+
+  it('reports increasing progress up to 1 across decoding and the neighbor pass', () => {
+    const fractions: number[] = []
+    const size: [number, number, number] = [128, 128, 128]
+    const ids = new Array(128 ** 3).fill(85)
+    parseMcEditWith(readNbt(encodeNbt(mceditRoot({ size, ids }))).root, table, (f) =>
+      fractions.push(f),
+    )
+    expect(fractions.length).toBeGreaterThan(2)
+    expect(fractions.some((f) => f > 0.5 && f < 1)).toBe(true)
+    expect(fractions.every((f, i) => i === 0 || f >= fractions[i - 1])).toBe(true)
+    expect(fractions.at(-1)).toBe(1)
+  })
+
+  it('flags approximate states only for skulls or banners without block entity', () => {
+    const s = parse({ size: [2, 1, 1], ids: [144, 176], metas: [1, 0] })
+    expect(s.warnings.approximateLegacyStates).toBe(true)
   })
 
   it('reads tile entities and entities, skipping those outside the structure', () => {

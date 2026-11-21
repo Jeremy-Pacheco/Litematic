@@ -4,12 +4,15 @@ import { StructureReadError } from '../errors'
 import { getByteArray, getInteger, getList, getString } from '../nbt/access'
 import {
   assertStructureSize,
+  dropUnusedStates,
   emptyWarnings,
   finishStructure,
   PaletteBuilder,
   type ParseProgressCallback,
 } from '../structureBuilder'
+import { applyLegacyBlockEntities } from './legacyBlockEntities'
 import { loadLegacyBlocks, type LegacyBlockTable } from './legacyBlocks'
+import { applyLegacyNeighbors } from './legacyNeighbors'
 
 /**
  * Parser for MCEdit / Schematica schematics (`.schematic`), the pre-1.13
@@ -24,6 +27,11 @@ import { loadLegacyBlocks, type LegacyBlockTable } from './legacyBlocks'
  */
 
 const PROGRESS_STEP = 1 << 20
+/**
+ * Share of the progress bar for decoding ids; the rest is the neighbor pass.
+ * They take similar time on structures full of fences, stairs, panes…
+ */
+const DECODE_SHARE = 0.5
 /** `(id << 4) | meta` with 12-bit ids. */
 const LOOKUP_SIZE = 4096 * 16
 const UNRESOLVED = -2
@@ -68,7 +76,6 @@ export function parseMcEditWith(
   const fullAdd = add && add.length === volume ? add : undefined
 
   const warnings = emptyWarnings()
-  warnings.approximateLegacyStates = true
   const palette = new PaletteBuilder()
   // Legacy palettes are small (≤ 1682 known states), so 16 bits always fit.
   const blocks = new Uint16Array(volume)
@@ -98,25 +105,44 @@ export function parseMcEditWith(
     blocks[i] = global
 
     if (i >= nextReport) {
-      onProgress?.(i / volume)
+      onProgress?.((i / volume) * DECODE_SHARE)
       nextReport = i + PROGRESS_STEP
     }
   }
+
+  // States that were not in id:meta: first those in block entities, then
+  // those derived from the neighbors (which may use the former).
+  const blockEntities = readBlockEntities(
+    getList(root, 'TileEntities')?.items ?? [],
+    size,
+    warnings,
+  )
+  const withBlockEntity = applyLegacyBlockEntities(blocks, size, palette, blockEntities)
+  const { missingBlockEntities } = applyLegacyNeighbors(
+    blocks,
+    size,
+    palette,
+    withBlockEntity,
+    (fraction) => onProgress?.(DECODE_SHARE + fraction * (1 - DECODE_SHARE)),
+  )
+  warnings.approximateLegacyStates = missingBlockEntities > 0
   onProgress?.(1)
 
-  return finishStructure({
+  const structure = finishStructure({
     format: 'schematic',
     formatVersion: null,
     dataVersion: null,
     size,
     palette: palette.states,
     blocks,
-    blockEntities: readBlockEntities(getList(root, 'TileEntities')?.items ?? [], size, warnings),
+    blockEntities,
     entities: readEntities(getList(root, 'Entities')?.items ?? [], warnings),
     regions: [{ name: '', min: { x: 0, y: 0, z: 0 }, size }],
     metadata: { name: null, author: null, description: null, createdAt: null, modifiedAt: null },
     warnings,
   })
+  // The table defaults replaced by the passes above are no longer used.
+  return dropUnusedStates(structure)
 }
 
 /** Tile entities store `x`, `y`, `z` relative to the schematic. */
