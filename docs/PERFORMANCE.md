@@ -73,15 +73,32 @@ En Chrome, un `.litematic` de 512 × 256 × 512 (64 MB comprimido) se lee de pri
 - **Límite comprobado antes de reservar**: una estructura de más de 512 Mi posiciones se rechaza
   sin intentar reservar la memoria.
 
+## Decodificación de Sponge (`feature/schem-parser`)
+
+Medido con `pnpm test:perf` (`tests/perf/spongeParser.perf.test.ts`): Sponge v3 de
+512 × 256 × 512 con bloques aleatorios, partiendo del NBT ya leído.
+
+| Paleta       | Varints            | Tiempo | Velocidad        | Memoria nueva                 |
+| ------------ | ------------------ | -----: | ---------------- | ----------------------------- |
+| 100 estados  | 1 byte cada uno    | 358 ms | ~187 M bloques/s | 128 MiB (2 B/bloque), heap +0 |
+| 1000 estados | casi todos 2 bytes | 465 ms | ~144 M bloques/s | 128 MiB (2 B/bloque), heap +0 |
+
+En Chrome, ese mismo tamaño (56 MB comprimido, 100 estados) se lee de principio a fin en ~740 ms
+vistos desde la interfaz.
+
+- Los bloques llegan como vista sin copia del `ByteArray` (`VarintReader` no copia).
+- Camino rápido para varints de un byte, que son todos los de paletas de hasta 128 estados.
+- La traducción índice local → global usa una tabla (`Int32Array`), no un `Map`.
+
 ## Compilación
 
-Tras `feature/litematic-parser`:
+Tras `feature/schem-parser`:
 
 | Archivo               |   Tamaño |     gzip |
 | --------------------- | -------: | -------: |
-| `index.js`            | 75,33 kB | 28,35 kB |
+| `index.js`            | 75,46 kB | 28,42 kB |
 | `index.css`           | 11,09 kB |  2,58 kB |
-| `structure.worker.js` | 13,55 kB |        — |
+| `structure.worker.js` | 16,95 kB |        — |
 
 Deepslate no se incluye en el build: por ahora solo lo usan los tests.
 

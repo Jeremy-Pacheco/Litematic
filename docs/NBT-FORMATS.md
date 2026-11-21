@@ -1,15 +1,15 @@
 # Formatos NBT
 
-> **Estado:** lectura de NBT, detección del formato y **parser de Litematica** implementados.
-> Los parsers de Sponge (`.schem`) y MCEdit (`.schematic`) están **pendientes**.
+> **Estado:** lectura de NBT, detección del formato y parsers de **Litematica** y **Sponge**
+> implementados. El parser de MCEdit (`.schematic`) está **pendiente**.
 
 ## Formatos soportados
 
 | Formato                               | Extensión    | Detección por contenido                            | Parser de bloques                    |
 | ------------------------------------- | ------------ | -------------------------------------------------- | ------------------------------------ |
 | Litematica                            | `.litematic` | `Version`, `Metadata` y `Regions` en la raíz       | ✅ `feature/litematic-parser`        |
-| Sponge Schematic v3                   | `.schem`     | Compuesto `Schematic` con `Version` = 3 y `Blocks` | ⏳ `feature/schem-parser`            |
-| Sponge Schematic v1 / v2              | `.schem`     | `Version`, `Palette` y `BlockData` en la raíz      | ⏳ `feature/schem-parser`            |
+| Sponge Schematic v3                   | `.schem`     | Compuesto `Schematic` con `Version` = 3 y `Blocks` | ✅ `feature/schem-parser`            |
+| Sponge Schematic v1 / v2              | `.schem`     | `Version`, `Palette` y `BlockData` en la raíz      | ✅ `feature/schem-parser`            |
 | MCEdit / Schematica (anterior a 1.13) | `.schematic` | `Blocks` y `Data` (ByteArray) y `Materials`        | ⏳ `feature/legacy-schematic-parser` |
 
 La extensión del archivo **no se usa para decidir**: solo sirve para filtrar el selector de
@@ -39,7 +39,7 @@ Todos los parsers producen el mismo tipo (`types/structure.ts`):
 | `nonAirBlocks`  | Posiciones que no son aire                                                                               |
 | `blockEntities` | Posición, `id` y NBT completo (copiado, sin referencias al archivo descomprimido)                        |
 | `entities`      | Posición fraccionaria, `id` y NBT                                                                        |
-| `regions`       | Subregiones con nombre (Litematica); el resto de formatos tendrá una sola                                |
+| `regions`       | Subregiones con nombre (Litematica); el resto de formatos tiene una sola, sin nombre                     |
 | `metadata`      | Nombre, autor, descripción, fechas                                                                       |
 | `warnings`      | Problemas no fatales: índices inexistentes, nombres anteriores a 1.13, solapamientos, entidades omitidas |
 
@@ -119,6 +119,64 @@ paleta de 52 estados → 6 bits) da exactamente los **5383 bloques** que Litemat
 `Metadata.TotalBlocks`. El archivo no se incluye en el repositorio: el test
 (`tests/parsers/litematic/realFile.test.ts`) lo busca en `tests/fixtures/local/`, carpeta ignorada
 por git, y se salta si no está.
+
+## Sponge Schematic (`.schem`)
+
+Referencia: especificación oficial
+([SpongePowered/Schematic-Specification](https://github.com/SpongePowered/Schematic-Specification)),
+versiones 1, 2 y 3. Es el formato de WorldEdit (que guarda en v3 desde la 7.3).
+
+|                         | v1 (2016)      | v2 (2019)                                  | v3 (2021)                                |
+| ----------------------- | -------------- | ------------------------------------------ | ---------------------------------------- |
+| Ubicación de los campos | Raíz           | Raíz                                       | Compuesto `Schematic`                    |
+| Paleta                  | `Palette`      | `Palette`                                  | `Blocks.Palette`                         |
+| Bloques                 | `BlockData`    | `BlockData`                                | `Blocks.Data`                            |
+| Block entities          | `TileEntities` | `BlockEntities` (datos junto a `Pos`/`Id`) | `Blocks.BlockEntities` (datos en `Data`) |
+| Entidades               | —              | `Entities` (datos junto a `Pos`/`Id`)      | `Entities` (datos en `Data`)             |
+| `DataVersion`           | —              | Sí                                         | Sí                                       |
+
+- **Tamaño**: `Width`, `Height`, `Length` son _unsigned short_ guardados en shorts con signo
+  (hasta 65 535 por eje).
+- **Orden de bloques**: `x + z · Width + y · Width · Length`, el mismo que `Structure`; se copian
+  en orden sin reordenar.
+- **Bloques como varints**: cada índice ocupa de 1 a 5 bytes (7 bits por byte, el bit alto indica
+  que siguen más). `VarintReader` los lee de forma secuencial, con un camino rápido para valores de
+  un byte (paletas de hasta 128 estados).
+- **Paleta invertida** respecto a Litematica: `{"minecraft:oak_stairs[facing=north]": 5}`. El texto
+  se interpreta con `parseBlockStateString` (namespace `minecraft` por defecto). Los índices pueden
+  tener huecos.
+- **Posiciones** (`Pos`): relativas a la esquina (0, 0, 0) de la estructura. `Offset` solo indica
+  dónde pegarla y no afecta.
+- Se aceptan `BlockEntities` y `TileEntities` en cualquier versión y ubicación, porque algunas
+  versiones de WorldEdit los han mezclado.
+- **Metadatos**: `Name`, `Author`, `Date`. WorldEdit no suele guardar el nombre: el título es
+  entonces el nombre del archivo.
+- **Biomas**: no se leen todavía. Podrían servir más adelante para el color de hierba y hojas.
+
+### Versiones antiguas
+
+Se marca el aviso de nombres anteriores a la 1.13 cuando `DataVersion` < 1631. La v1 no tiene
+`DataVersion`, así que **no se puede saber** si sus nombres son anteriores a la 1.13 y no se
+marca.
+
+### Validación
+
+| Problema                                                          | Resultado             |
+| ----------------------------------------------------------------- | --------------------- |
+| Sin versión, sin tamaño, sin paleta o sin datos de bloques        | `invalid-structure`   |
+| Texto de blockstate mal formado                                   | `invalid-structure`   |
+| Índice de paleta negativo o mayor de 2^20                         | `invalid-structure`   |
+| Menos o más varints que `Width × Height × Length`, varint cortado | `invalid-structure`   |
+| Índice de bloque sin entrada en la paleta                         | Aire + aviso          |
+| Block entity fuera de la estructura o sin `Pos`                   | Se omite + aviso      |
+| Estructura de más de 512 Mi posiciones                            | `structure-too-large` |
+
+### Verificación con un archivo real
+
+Un `.schem` real de WorldEdit 7.4.6 (Sponge v3, `DataVersion` 5023, 12 × 14 × 15, 40 estados, 8
+block entities, 6 entidades) da **711 bloques** que no son aire, la misma cifra que una
+decodificación independiente hecha con un script aparte sobre el NBT leído por Deepslate. El
+archivo no se incluye en el repositorio (`tests/fixtures/local/`).
 
 ## Flujo de lectura
 
