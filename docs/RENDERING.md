@@ -25,16 +25,16 @@ API: `ModelManager.bake(palette)` → `BakedModels`.
 
 ### Resultado por estado (`BakedState`)
 
-| Campo           | Contenido                                                                                                                                       |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `geometry`      | Modelo del bloque, **sin el fluido**. `geometry[capa][grupo]`: posiciones (0–1), UV, color de tinte y normales por vértice, 4 vértices por quad |
-| `opaqueFaces`   | Bit por lado: el lado del modelo está **totalmente cubierto por caras opacas**                                                                  |
-| `fullFaces`     | Bit por lado: el lado del modelo está totalmente cubierto (cualquier capa)                                                                      |
-| `missing`       | El bloque no tiene modelo: se dibuja con la textura de «falta textura»                                                                          |
-| `empty`         | Nada que dibujar (aire)                                                                                                                         |
-| `fluid`         | Fluido que ocupa la posición: ninguno, agua (agua, bloques anegados, algas, praderas, burbujas) o lava                                          |
-| `fluidGeometry` | Geometría de ese fluido, con la superficie por debajo del borde (o `null`)                                                                      |
-| `fluidFull`     | El mismo fluido a altura completa, para cuando encima hay el mismo fluido (o `null`)                                                            |
+| Campo         | Contenido                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `geometry`    | Modelo del bloque, **sin el fluido**. `geometry[capa][grupo]`: posiciones (0–1), UV, color de tinte y normales por vértice, 4 vértices por quad  |
+| `opaqueFaces` | Bit por lado: el lado del modelo está **totalmente cubierto por caras opacas**                                                                   |
+| `fullFaces`   | Bit por lado: el lado del modelo está totalmente cubierto (cualquier capa)                                                                       |
+| `missing`     | El bloque no tiene modelo: se dibuja con la textura de «falta textura»                                                                           |
+| `empty`       | Nada que dibujar (aire)                                                                                                                          |
+| `fluid`       | Fluido que ocupa la posición: ninguno, agua (agua, bloques anegados, algas, praderas, burbujas) o lava                                           |
+| `fluidHeight` | Altura propia de ese fluido como la mide el juego: cantidad / 9 (8/9 una fuente o fluido que cae, `8 − level` novenos el que corre)              |
+| `fluidRender` | Cómo dibujarlo: zona del atlas de las texturas quieta y de corriente, tinte (el agua es azul) y capa (o `null`). Su forma la construye el mesher |
 
 **Grupos:** 0–5 = caras que están sobre el lado `up, down, north, south, east, west` del bloque; 6 =
 caras interiores, que nunca se ocultan. Una cara pertenece a un lado si todos sus vértices están en
@@ -61,8 +61,8 @@ cristal), se usará `fullFaces`.
 
 Minecraft no guarda la capa en los recursos, así que se deduce del **canal alfa de cada textura**
 (`classifyAlpha`). La capa se decide **por cara**, no por bloque: una escalera inundada
-(`waterlogged`) tiene caras opacas y agua translúcida. El agua se guarda aparte del modelo
-(`fluidGeometry`), para que el mesher la una con el agua vecina sin tocar las caras del bloque.
+(`waterlogged`) tiene caras opacas y agua translúcida. El agua no forma parte del modelo: el mesher
+la construye bloque a bloque (`fluidRender`), unida al agua vecina y sin tocar las caras del bloque.
 
 ### Bloques especiales
 
@@ -70,7 +70,7 @@ Los bloques que Minecraft dibuja como entidades no tienen modelo JSON y se gener
 `SpecialRenderers` de Deepslate: cofres, estandartes, cabezas, cajas de shulker, campanas,
 macetas decoradas y fluidos. Si el juego ya trae modelo JSON del bloque (en 26.x, carteles y
 camas), se usa ese modelo y no el de Deepslate, que pediría texturas de rutas antiguas. Los fluidos
-se generan siempre aparte (`fluidMeshOf`): Deepslate recibe el bloque sin `waterlogged`, para que su
+no se piden a Deepslate (los construye el mesher): recibe el bloque sin `waterlogged`, para que su
 agua no se dibuje dos veces.
 
 ### Giros por eje de 26.x (`models/elementRotation.ts`)
@@ -160,13 +160,27 @@ estructura leída ─► App cambia al visor (ViewerScreen, cargado bajo demanda
 - **Eliminación de caras ocultas:** una cara del lado `d` se omite si el vecino en `d` cubre el
   lado opuesto con caras opacas (`opaqueFaces`), o si es el mismo estado no opaco y ambos cubren
   el lado compartido (cristal contra cristal). Las caras interiores (grupo 6) nunca se omiten.
-- **Fluidos:** el modelo y el fluido de cada bloque se recorren por separado. Una cara del fluido se
-  omite junto al mismo fluido (agua, bloques anegados, algas, burbujas) o junto a un lado opaco, y
-  con el mismo fluido encima se usa la forma a altura completa (sin franjas entre capas de agua).
-  Así un lago o un bosque de algas es un solo volumen, como en el juego, y no una superficie por
-  bloque; las caras del modelo de un bloque anegado se mantienen. En un mar sintético de
-  64 × 32 × 64 con un 20 % de columnas de algas, las caras translúcidas bajaron de 69 764 a 12 032,
-  sin cambio apreciable en el tiempo de mallado (unos 41 ms antes; entre 37 y 43 ms después).
+- **Fluidos (`viewer/fluidSurface.ts`):** el mesher construye el fluido de cada bloque como el
+  `LiquidBlockRenderer` del juego, a partir de sus vecinos:
+  - **Altura de cada esquina:** media ponderada (las alturas ≥ 0,8 pesan 10) del bloque, sus dos
+    vecinos de esa esquina y, si hace falta, el diagonal. Vale 1 si alguno tiene el mismo fluido
+    encima. Los bloques sólidos y lo que queda fuera de la estructura no cuentan, para que el borde
+    de un recorte no baje.
+  - **Superficie:** inclinada entre las cuatro esquinas, un poco por debajo de su altura. Si el
+    fluido corre (`FlowingFluid.getFlow`: diferencias de altura con los vecinos, y el fluido que
+    cae junto a ellos), lleva la textura de corriente girada en el sentido del flujo; si no, la
+    quieta.
+  - **Caras laterales:** hasta la altura de sus esquinas, con la textura de corriente. Una cara se
+    omite junto al mismo fluido (agua, bloques anegados, algas, burbujas) o junto a un lado opaco;
+    la superficie, si hay el mismo fluido encima.
+  - En las tapas del sistema de capas se dibuja esa cara siempre (a altura completa si había
+    fluido encima).
+
+  Así un lago o un bosque de algas es un solo volumen, el agua que corre baja en pendiente desde su
+  fuente y las caras del modelo de un bloque anegado se mantienen. Las alturas de cada trozo que se
+  malla se guardan en una caché (cada una la leen hasta nueve bloques). Mediciones en
+  `PERFORMANCE.md`.
+
 - Formato compacto de vértices: posiciones `Float32`, UV `Uint16` normalizadas, color `Uint8`
   normalizado e índices `Uint16` cuando caben. Ocupa menos de la mitad que todo en 32 bits.
 - **Varios workers** (`viewer/meshingPlan.ts`): con más de 200 000 bloques se usan hasta 4
@@ -283,8 +297,9 @@ también al pulsar en el aire de su celda.
 
 ## Limitaciones conocidas
 
-- **Fluidos:** todo fluido es una fuente quieta (altura de su `level`); no se calcula la inclinación
-  del agua que corre ni la altura según los bloques vecinos.
+- **Fluidos:** «sólido» se aproxima con la cobertura del modelo (una valla cuenta como espacio
+  abierto); el fluido que cae no se inclina hacia abajo como en el juego; no se dibuja la cara
+  inferior de la superficie vista desde dentro del agua ni la capa extra junto al cristal.
 - **Texto de los carteles:** las líneas con caracteres fuera de las hojas de letras del jar (chino,
   japonés, emojis…) usan la letra del sistema; no se aplican los estilos de los componentes de
   texto (negrita, colores por tramo); y como mucho 512 caras con

@@ -26,6 +26,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | —   | `feature/hanging-sign-text`        | Texto de carteles colgantes; texto colocado sobre el modelo dibujado       | ✅     |
 | —   | `fix/model-euler-rotation`         | Modelos 26.x con giros por eje (colgantes con rotación 3, 7, 11 y 15)      | ✅     |
 | —   | `feature/sign-font`                | Texto de los carteles con la letra del juego                               | ✅     |
+| —   | `feature/flowing-water`            | Agua y lava que corren, con la superficie inclinada como en el juego       | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

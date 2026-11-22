@@ -253,6 +253,24 @@ Por mejora, en la misma sesión:
 
 La memoria JS fluctúa según cuándo pase el recolector de basura; los valores son orientativos.
 
+### Fluidos que corren (`feature/flowing-water`)
+
+El mesher construye la forma de cada fluido a partir de sus vecinos (antes era una forma fija por
+estado). Medido con los modelos del `client.jar` 26.3 en Node (mediana de 7 vueltas, todas las
+secciones), en `main` y en la rama con el mismo script:
+
+| Escena                                         | Caras (opacas / recortadas / translúcidas) |  Antes | Después |
+| ---------------------------------------------- | ------------------------------------------ | -----: | ------: |
+| Mar 64 × 32 × 64 con un 20 % de algas          | 10 221 / 42 560 / 12 032 (iguales)         |  36 ms |   25 ms |
+| Lago 256 × 8 × 256 (7 capas de agua quieta)    | 132 096 / 0 / 72 704 (iguales)             | 141 ms |  130 ms |
+| Agua que corre 256 × 2 × 256 (toda superficie) | 132 096 / 0 / 66 560 (iguales)             |  48 ms |   93 ms |
+
+El número de caras no cambia: se ocultan las mismas. El agua quieta va algo más rápida (sin mezclar
+geometría fija de fluido con el modelo); el agua que corre cuesta unos 0,7 µs más por bloque de
+superficie (vecinos, media de las esquinas, flujo y giro de la textura). Primera versión: 118 ms en
+esa escena; con arrays de trabajo reutilizados (sin reservar memoria por bloque), la diagonal leída
+solo cuando hace falta y una caché de alturas por trozo, 93 ms.
+
 Descartado: `SharedArrayBuffer` (exige cabeceras COOP/COEP en el hosting y el reparto por bandas
 ya evita copiar el array entero a cada worker). Pendiente de valorar si hiciera falta: comprimir las
 posiciones de los vértices (−30 % de memoria de GPU) y aumentar el presupuesto de subida por frame

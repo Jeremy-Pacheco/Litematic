@@ -21,56 +21,57 @@ export const SOURCE_HEIGHT = 8 / 9
 /** The surface sits this far below its height, as in the game (no z-fighting at 1). */
 const SURFACE_OFFSET = 0.001
 
-/** Adds a height to a weighted average, as the game does: high heights weigh 10. */
-function addWeighted(acc: [number, number], height: number): void {
-  if (height >= 0.8) {
-    acc[0] += height * 10
-    acc[1] += 10
-  } else if (height >= 0) {
-    acc[0] += height
-    acc[1] += 1
-  }
+/** Weight of a height in a corner average, as the game: high heights weigh 10. */
+function weight(height: number): number {
+  return height >= 0.8 ? 10 : height >= 0 ? 1 : 0
+}
+
+/**
+ * Whether a corner needs the diagonal block's height: only when a side
+ * neighbour holds some of the fluid and none reaches the top.
+ */
+export function needsDiagonal(a: number, b: number): boolean {
+  return a < 1 && b < 1 && (a > 0 || b > 0)
 }
 
 /**
  * Height of one top corner (`calculateAverageHeight`). `self`, `a` and `b`:
  * heights of this block and of the two side neighbours at that corner;
- * `diagonal` is only read when needed. Heights: 1 when the same fluid is
- * above, the own height for the same fluid, 0 for open space, -1 for solid
- * blocks (left out of the average).
+ * `diagonal`: the diagonal block's height when `needsDiagonal`, otherwise
+ * ignored. Heights: 1 when the same fluid is above, the own height for the
+ * same fluid, 0 for open space, -1 for solid blocks (left out).
  */
-export function cornerHeight(self: number, a: number, b: number, diagonal: () => number): number {
+export function cornerHeight(self: number, a: number, b: number, diagonal: number): number {
   if (a >= 1 || b >= 1) return 1
-  const acc: [number, number] = [0, 0]
+  let sum = 0
+  let total = 0
   if (a > 0 || b > 0) {
-    const d = diagonal()
-    if (d >= 1) return 1
-    addWeighted(acc, d)
+    if (diagonal >= 1) return 1
+    sum += diagonal * weight(diagonal)
+    total += weight(diagonal)
   }
-  addWeighted(acc, self)
-  addWeighted(acc, a)
-  addWeighted(acc, b)
-  return acc[1] > 0 ? acc[0] / acc[1] : self
+  sum += self * weight(self) + a * weight(a) + b * weight(b)
+  total += weight(self) + weight(a) + weight(b)
+  return total > 0 ? sum / total : self
 }
 
 /**
  * Contribution of one horizontal neighbour to the flow (`FlowingFluid.getFlow`).
  * `neighbor`: its own height if it holds the same fluid, 0 if it holds none,
  * `null` if it holds another fluid (it does not affect the flow).
- * `below`: the same for the block under it, read only when the neighbour is
- * open (no fluid and not solid): fluid falling there pulls the flow.
+ * `below`: the same for the block under it, which matters only when the
+ * neighbour is open (no fluid, not solid): fluid falling there pulls the flow.
  */
 export function flowDifference(
   own: number,
   neighbor: number | null,
   open: boolean,
-  below: () => number | null,
+  below: number | null,
 ): number {
   if (neighbor === null) return 0
   if (neighbor > 0) return own - neighbor
   if (!open) return 0
-  const under = below()
-  return under !== null && under > 0 ? own - (under - SOURCE_HEIGHT) : 0
+  return below !== null && below > 0 ? own - (below - SOURCE_HEIGHT) : 0
 }
 
 /** Corner heights: north-west, north-east, south-west, south-east. */
@@ -113,16 +114,20 @@ export class FluidQuads {
   /** One quad: 4 positions (xyz), 4 UVs (0–1 atlas), one shaded RGB color (0–1). */
   push(layer: number, positions: number[], uvs: number[], rgb: readonly number[]): void {
     const q = this.#reserve(layer)
-    this.#positions[layer].set(positions, q * 12)
+    const pos = this.#positions[layer]
+    for (let i = 0; i < 12; i++) pos[q * 12 + i] = positions[i]
+    // Uint16Array and Uint8ClampedArray-like rounding by hand: the values are in range.
     const uv = this.#uvs[layer]
-    for (let i = 0; i < 8; i++) {
-      uv[q * 8 + i] = Math.max(0, Math.min(65535, Math.round(uvs[i] * 65535)))
-    }
+    for (let i = 0; i < 8; i++) uv[q * 8 + i] = (uvs[i] * 65535 + 0.5) | 0
     const color = this.#colors[layer]
+    const r = Math.min(255, (rgb[0] * 255 + 0.5) | 0)
+    const g = Math.min(255, (rgb[1] * 255 + 0.5) | 0)
+    const b = Math.min(255, (rgb[2] * 255 + 0.5) | 0)
     for (let v = 0; v < 4; v++) {
-      for (let c = 0; c < 3; c++) {
-        color[q * 12 + v * 3 + c] = Math.max(0, Math.min(255, Math.round(rgb[c] * 255)))
-      }
+      const o = q * 12 + v * 3
+      color[o] = r
+      color[o + 1] = g
+      color[o + 2] = b
     }
   }
 
@@ -138,11 +143,61 @@ export class FluidQuads {
 }
 
 /** The game's fixed face shading: up, down, north/south, east/west. */
-const SHADE = { up: 1, down: 0.5, z: 0.8, x: 0.6 }
+const SHADE_UP = 1
+const SHADE_DOWN = 0.5
+const SHADE_Z = 0.8
+const SHADE_X = 0.6
+
+// Scratch arrays for one quad, reused for every face (no allocation per block).
+const POS: number[] = new Array<number>(12).fill(0)
+const UV: number[] = new Array<number>(8).fill(0)
+const RGB: number[] = [0, 0, 0]
+
+/** Writes the 4 corners of a quad into `POS`. */
+function corners4(
+  x0: number,
+  y0: number,
+  z0: number,
+  x1: number,
+  y1: number,
+  z1: number,
+  x2: number,
+  y2: number,
+  z2: number,
+  x3: number,
+  y3: number,
+  z3: number,
+): void {
+  POS[0] = x0
+  POS[1] = y0
+  POS[2] = z0
+  POS[3] = x1
+  POS[4] = y1
+  POS[5] = z1
+  POS[6] = x2
+  POS[7] = y2
+  POS[8] = z2
+  POS[9] = x3
+  POS[10] = y3
+  POS[11] = z3
+}
+
+/** Writes UV `k` as fractions (fu, fv) of an atlas rectangle. */
+function uvAt(k: number, rect: readonly number[], fu: number, fv: number): void {
+  UV[k * 2] = rect[0] + (rect[2] - rect[0]) * fu
+  UV[k * 2 + 1] = rect[1] + (rect[3] - rect[1]) * fv
+}
+
+function shade(color: readonly number[], s: number): number[] {
+  RGB[0] = color[0] * s
+  RGB[1] = color[1] * s
+  RGB[2] = color[2] * s
+  return RGB
+}
 
 /**
  * Adds the visible faces (`faces`: side bits) of a fluid block at (x, y, z).
- * `flow`: horizontal flow vector (0, 0 for still fluid).
+ * `flowX`, `flowZ`: horizontal flow vector (0, 0 for still fluid).
  */
 export function addFluidBlock(
   out: FluidQuads,
@@ -150,101 +205,72 @@ export function addFluidBlock(
   x: number,
   y: number,
   z: number,
-  [nw, ne, sw, se]: Corners,
-  flow: [number, number],
+  corners: Corners,
+  flowX: number,
+  flowZ: number,
   faces: number,
 ): void {
-  const { still, flow: flowing, color, layer } = render
-  const u = (t: readonly number[], f: number) => t[0] + (t[2] - t[0]) * f
-  const v = (t: readonly number[], f: number) => t[1] + (t[3] - t[1]) * f
-  const shaded = (s: number) => [color[0] * s, color[1] * s, color[2] * s]
+  const { still, flow, color, layer } = render
+  const [nw, ne, sw, se] = corners
 
   if (faces & UP) {
-    const h = [nw, sw, se, ne].map((c) => y + c - SURFACE_OFFSET)
-    let uvs: number[]
-    if (flow[0] === 0 && flow[1] === 0) {
-      uvs = [
-        u(still, 0),
-        v(still, 0),
-        u(still, 0),
-        v(still, 1),
-        u(still, 1),
-        v(still, 1),
-        u(still, 1),
-        v(still, 0),
-      ]
+    const top = y - SURFACE_OFFSET
+    corners4(x, top + nw, z, x, top + sw, z + 1, x + 1, top + se, z + 1, x + 1, top + ne, z)
+    if (flowX === 0 && flowZ === 0) {
+      uvAt(0, still, 0, 0)
+      uvAt(1, still, 0, 1)
+      uvAt(2, still, 1, 1)
+      uvAt(3, still, 1, 0)
     } else {
       // The flow texture turned along the flow, sampling its middle half.
-      const angle = Math.atan2(flow[1], flow[0]) - Math.PI / 2
+      const angle = Math.atan2(flowZ, flowX) - Math.PI / 2
       const s = Math.sin(angle) * 0.25
       const c = Math.cos(angle) * 0.25
-      const t = flowing
-      uvs = [
-        u(t, 0.5 + (-c - s)),
-        v(t, 0.5 + -c + s),
-        u(t, 0.5 + -c + s),
-        v(t, 0.5 + c + s),
-        u(t, 0.5 + c + s),
-        v(t, 0.5 + (c - s)),
-        u(t, 0.5 + (c - s)),
-        v(t, 0.5 + (-c - s)),
-      ]
+      uvAt(0, flow, 0.5 - c - s, 0.5 - c + s)
+      uvAt(1, flow, 0.5 - c + s, 0.5 + c + s)
+      uvAt(2, flow, 0.5 + c + s, 0.5 + c - s)
+      uvAt(3, flow, 0.5 + c - s, 0.5 - c - s)
     }
-    out.push(
-      layer,
-      [x, h[0], z, x, h[1], z + 1, x + 1, h[2], z + 1, x + 1, h[3], z],
-      uvs,
-      shaded(SHADE.up),
-    )
+    out.push(layer, POS, UV, shade(color, SHADE_UP))
   }
 
   if (faces & DOWN) {
-    out.push(
-      layer,
-      [x, y, z + 1, x, y, z, x + 1, y, z, x + 1, y, z + 1],
-      [
-        u(still, 0),
-        v(still, 1),
-        u(still, 0),
-        v(still, 0),
-        u(still, 1),
-        v(still, 0),
-        u(still, 1),
-        v(still, 1),
-      ],
-      shaded(SHADE.down),
-    )
+    corners4(x, y, z + 1, x, y, z, x + 1, y, z, x + 1, y, z + 1)
+    uvAt(0, still, 0, 1)
+    uvAt(1, still, 0, 0)
+    uvAt(2, still, 1, 0)
+    uvAt(3, still, 1, 1)
+    out.push(layer, POS, UV, shade(color, SHADE_DOWN))
   }
 
-  // Sides: from corner 1 to corner 2 along the side, up to their heights;
-  // the flow texture's left half, cut at the same heights.
-  const side = (
-    x1: number,
-    z1: number,
-    h1: number,
-    x2: number,
-    z2: number,
-    h2: number,
-    s: number,
-  ) => {
-    out.push(
-      layer,
-      [x + x1, y + h1, z + z1, x + x2, y + h2, z + z2, x + x2, y, z + z2, x + x1, y, z + z1],
-      [
-        u(flowing, 0),
-        v(flowing, (1 - h1) * 0.5),
-        u(flowing, 0.5),
-        v(flowing, (1 - h2) * 0.5),
-        u(flowing, 0.5),
-        v(flowing, 0.5),
-        u(flowing, 0),
-        v(flowing, 0.5),
-      ],
-      shaded(s),
-    )
-  }
-  if (faces & NORTH) side(0, 0, nw, 1, 0, ne, SHADE.z)
-  if (faces & SOUTH) side(1, 1, se, 0, 1, sw, SHADE.z)
-  if (faces & EAST) side(1, 0, ne, 1, 1, se, SHADE.x)
-  if (faces & WEST) side(0, 1, sw, 0, 0, nw, SHADE.x)
+  if (faces & NORTH) side(out, render, x, y, z, 0, 0, nw, 1, 0, ne, SHADE_Z)
+  if (faces & SOUTH) side(out, render, x, y, z, 1, 1, se, 0, 1, sw, SHADE_Z)
+  if (faces & EAST) side(out, render, x, y, z, 1, 0, ne, 1, 1, se, SHADE_X)
+  if (faces & WEST) side(out, render, x, y, z, 0, 1, sw, 0, 0, nw, SHADE_X)
+}
+
+/**
+ * One side, from corner 1 to corner 2 along it, up to their heights; the
+ * flow texture's left half, cut at the same heights.
+ */
+function side(
+  out: FluidQuads,
+  { flow, color, layer }: FluidRender,
+  x: number,
+  y: number,
+  z: number,
+  x1: number,
+  z1: number,
+  h1: number,
+  x2: number,
+  z2: number,
+  h2: number,
+  s: number,
+): void {
+  corners4(x + x1, y + h1, z + z1, x + x2, y + h2, z + z2, x + x2, y, z + z2, x + x1, y, z + z1)
+  uvAt(0, flow, 0, (1 - h1) * 0.5)
+  uvAt(1, flow, 0.5, (1 - h2) * 0.5)
+  uvAt(2, flow, 0.5, 0.5)
+  uvAt(3, flow, 0, 0.5)
+  out.push(layer, POS, UV, shade(color, s))
 }

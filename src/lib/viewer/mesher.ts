@@ -11,6 +11,7 @@ import {
   cornerHeight,
   flowDifference,
   FluidQuads,
+  needsDiagonal,
   UP,
   type Corners,
 } from './fluidSurface'
@@ -141,6 +142,22 @@ export class Mesher {
   readonly #prepared: PreparedLayers[]
   /** Whether the model has any quad (water and lava have none). */
   readonly #hasModel: boolean[]
+  /** Scratch corner heights of the fluid being built. */
+  readonly #corners: Corners = [0, 0, 0, 0]
+  /**
+   * Fluid heights of the box being meshed (`#fluidHeight`), with the fluid
+   * they were measured for (+1; 0 = not measured yet).
+   */
+  readonly #heights = {
+    x0: 0,
+    y0: 0,
+    z0: 0,
+    w: 0,
+    h: 0,
+    d: 0,
+    fluids: new Uint8Array(0),
+    values: new Float32Array(0),
+  }
 
   constructor(input: MesherInput) {
     this.#size = input.size
@@ -207,6 +224,7 @@ export class Mesher {
     const visible: { layer: number; group: PreparedGroup; x: number; y: number; z: number }[] = []
     const quadCounts = [0, 0, 0]
     const fluids = new FluidQuads(RENDER_LAYERS.length)
+    this.#resetHeights(box)
 
     for (let y = y0; y < y1; y++) {
       for (let z = z0; z < z1; z++) {
@@ -276,7 +294,13 @@ export class Mesher {
       out.colors.set(colors, quadOffset * 12)
       for (let q = 0; q < count; q++) {
         const base = (quadOffset + q) * 4
-        out.indices.set([base, base + 1, base + 2, base, base + 2, base + 3], (quadOffset + q) * 6)
+        const i = (quadOffset + q) * 6
+        out.indices[i] = base
+        out.indices[i + 1] = base + 1
+        out.indices[i + 2] = base + 2
+        out.indices[i + 3] = base
+        out.indices[i + 4] = base + 2
+        out.indices[i + 5] = base + 3
       }
       written[layer] += count
     }
@@ -311,20 +335,22 @@ export class Mesher {
     }
     if (faces === 0) return
 
-    const height = (dx: number, dz: number) => this.#fluidHeight(x + dx, y, z + dz, fluid)
-    const self = height(0, 0)
-    let corners: Corners = [1, 1, 1, 1]
-    if (self < 1) {
-      const n = height(0, -1)
-      const s = height(0, 1)
-      const e = height(1, 0)
-      const w = height(-1, 0)
-      corners = [
-        cornerHeight(self, n, w, () => height(-1, -1)),
-        cornerHeight(self, n, e, () => height(1, -1)),
-        cornerHeight(self, s, w, () => height(-1, 1)),
-        cornerHeight(self, s, e, () => height(1, 1)),
-      ]
+    const corners = this.#corners
+    const self = this.#fluidHeight(x, y, z, fluid)
+    if (self >= 1) {
+      corners.fill(1)
+    } else {
+      const n = this.#fluidHeight(x, y, z - 1, fluid)
+      const s = this.#fluidHeight(x, y, z + 1, fluid)
+      const e = this.#fluidHeight(x + 1, y, z, fluid)
+      const w = this.#fluidHeight(x - 1, y, z, fluid)
+      // The diagonal block is only read when the average needs it.
+      const diagonal = (a: number, b: number, dx: number, dz: number) =>
+        needsDiagonal(a, b) ? this.#fluidHeight(x + dx, y, z + dz, fluid) : -1
+      corners[0] = cornerHeight(self, n, w, diagonal(n, w, -1, -1))
+      corners[1] = cornerHeight(self, n, e, diagonal(n, e, 1, -1))
+      corners[2] = cornerHeight(self, s, w, diagonal(s, w, -1, 1))
+      corners[3] = cornerHeight(self, s, e, diagonal(s, e, 1, 1))
     }
 
     // Flow: only the surface shows it, so it is only needed when that is drawn.
@@ -334,14 +360,14 @@ export class Mesher {
       const own = state.fluidHeight
       for (const [dx, dz] of HORIZONTAL) {
         const neighbor = this.#ownFluid(x + dx, y, z + dz, fluid)
-        const diff = flowDifference(own, neighbor, this.#isOpen(x + dx, y, z + dz), () =>
-          this.#ownFluid(x + dx, y - 1, z + dz, fluid),
-        )
+        const open = neighbor === 0 && this.#isOpen(x + dx, y, z + dz)
+        const below = open ? this.#ownFluid(x + dx, y - 1, z + dz, fluid) : null
+        const diff = flowDifference(own, neighbor, open, below)
         fx += dx * diff
         fz += dz * diff
       }
     }
-    addFluidBlock(out, state.fluidRender!, x, y, z, corners, [fx, fz], faces)
+    addFluidBlock(out, state.fluidRender!, x, y, z, corners, fx, fz, faces)
   }
 
   /**
@@ -351,11 +377,46 @@ export class Mesher {
    * (left out of the average, so the edge of a cut does not slope down).
    */
   #fluidHeight(x: number, y: number, z: number, fluid: number): number {
+    // Each height is read by up to nine blocks around it: keep it for the box.
+    const c = this.#heights
+    const cx = x - c.x0
+    const cy = y - c.y0
+    const cz = z - c.z0
+    const inCache = cx >= 0 && cx < c.w && cy >= 0 && cy < c.h && cz >= 0 && cz < c.d
+    const slot = (cy * c.d + cz) * c.w + cx
+    if (inCache && c.fluids[slot] === fluid + 1) return c.values[slot]
+    const height = this.#computeFluidHeight(x, y, z, fluid)
+    if (inCache) {
+      c.fluids[slot] = fluid + 1
+      c.values[slot] = height
+    }
+    return height
+  }
+
+  #computeFluidHeight(x: number, y: number, z: number, fluid: number): number {
     const index = this.#indexAt(x, y, z)
     if (index < 0) return -1
     const state = this.#states[this.#blocks[index]]
     if (state?.fluid === fluid) return this.#fluidAt(x, y + 1, z) === fluid ? 1 : state.fluidHeight
     return this.#isOpen(x, y, z) ? 0 : -1
+  }
+
+  /** Clears the height cache for a box, with a margin of one block around it in x and z. */
+  #resetHeights({ x0, y0, z0, x1, y1, z1 }: Box): void {
+    const c = this.#heights
+    c.x0 = x0 - 1
+    c.y0 = y0
+    c.z0 = z0 - 1
+    c.w = x1 - x0 + 2
+    c.h = y1 - y0
+    c.d = z1 - z0 + 2
+    const size = c.w * c.h * c.d
+    if (c.fluids.length < size) {
+      c.fluids = new Uint8Array(size)
+      c.values = new Float32Array(size)
+    } else {
+      c.fluids.fill(0, 0, size)
+    }
   }
 
   /**
