@@ -56,11 +56,32 @@ export function animationLength(steps: readonly AnimationStep[]): number {
 
 /** The frame shown at a given game tick (the animation loops). */
 export function frameAt(steps: readonly AnimationStep[], tick: number): number {
+  return blendAt(steps, tick).frame
+}
+
+/** Whether an animation blends each frame into the next (`"interpolate": true`). */
+export function animationInterpolates(mcmeta: unknown): boolean {
+  const animation = (mcmeta as { animation?: { interpolate?: unknown } } | null)?.animation
+  return animation?.interpolate === true
+}
+
+/**
+ * Where an animation is at a game tick: the current frame, the next one and
+ * how far it has blended into it (0–1, in whole ticks, as the game's
+ * interpolation advances once per tick).
+ */
+export function blendAt(
+  steps: readonly AnimationStep[],
+  tick: number,
+): { frame: number; next: number; t: number } {
   const length = animationLength(steps)
-  let t = ((Math.floor(tick) % length) + length) % length
-  for (const step of steps) {
-    if (t < step.ticks) return step.frame
-    t -= step.ticks
+  let rest = ((Math.floor(tick) % length) + length) % length
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    if (rest < step.ticks) {
+      return { frame: step.frame, next: steps[(i + 1) % steps.length].frame, t: rest / step.ticks }
+    }
+    rest -= step.ticks
   }
-  return steps[0].frame
+  return { frame: steps[0].frame, next: steps[1 % steps.length].frame, t: 0 }
 }

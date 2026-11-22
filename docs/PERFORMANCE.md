@@ -314,3 +314,14 @@ GPU; el proceso de Chrome entero rondó el 30 % de un núcleo en modo _headless_
 a memoria al no tener pantalla), así que en una ventana normal se espera menos, pero no se midió.
 Primera versión: redibujaba en cada tick (20 veces por segundo, por el agua que corre); ahora cada
 dos ticks, con el agua a su velocidad real.
+
+**Mezcla entre fotogramas** (`feature/texture-interpolation`), mismo método, comparado con `main`:
+
+| Escena                                                    | `main`                      | Con mezcla                  |
+| --------------------------------------------------------- | --------------------------- | --------------------------- |
+| Prismarina 16 × 16                                        | 0 redibujados/s             | 2,8 redibujados/s, 3,2 ms/s |
+| 256 × 256 de tallos del Nether, magma, sculk y prismarina | 5,2 redibujados/s, 5,5 ms/s | 13 redibujados/s, 13,5 ms/s |
+
+(ms/s: tiempo del hilo principal por segundo; los «redibujados» cuentan las llamadas a `clear`.)
+Una estructura con texturas que se mezclan rápido (tallos del Nether, magma) pasa a redibujarse de
+forma continua, como con el agua; sigue por debajo del 1,5 % del hilo principal.

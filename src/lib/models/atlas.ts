@@ -4,7 +4,7 @@ import { packAtlas, type AtlasLayout, type Placement, type TextureSize } from '.
 import { MISSING_TEXTURE, type BakeAtlas } from './bakeStates'
 import type { GameResources } from './gameResources'
 import { classifyAlpha, RenderLayer } from './renderLayer'
-import { animationSteps, type AnimationStep } from './textureAnimation'
+import { animationInterpolates, animationSteps, type AnimationStep } from './textureAnimation'
 
 const Id = Identifier
 
@@ -49,6 +49,8 @@ export interface AtlasAnimation {
   /** Top-left corner of each frame (same size as `target`) in the frame sheet; `null` if unused. */
   frames: ({ x: number; y: number } | null)[]
   steps: AnimationStep[]
+  /** Each frame fades into the next (`"interpolate": true`) instead of switching. */
+  interpolate: boolean
 }
 
 export interface AtlasAnimations {
@@ -179,13 +181,28 @@ function buildAnimations(
   inner: ReadonlyMap<string, Placement>,
   resources: GameResources,
 ): AtlasAnimations {
-  const animated: { id: string; bitmap: ImageBitmap; p: Placement; steps: AnimationStep[] }[] = []
+  const animated: {
+    id: string
+    bitmap: ImageBitmap
+    p: Placement
+    steps: AnimationStep[]
+    interpolate: boolean
+  }[] = []
   for (const [id, bitmap] of bitmaps) {
     const identifier = Id.parse(id)
     if (!resources.hasAnimation(identifier) || bitmap.height <= bitmap.width) continue
     const frameCount = Math.floor(bitmap.height / bitmap.width)
-    const steps = animationSteps(resources.getAnimation(identifier), frameCount)
-    if (steps) animated.push({ id, bitmap, p: inner.get(id)!, steps })
+    const mcmeta = resources.getAnimation(identifier)
+    const steps = animationSteps(mcmeta, frameCount)
+    if (steps) {
+      animated.push({
+        id,
+        bitmap,
+        p: inner.get(id)!,
+        steps,
+        interpolate: animationInterpolates(mcmeta),
+      })
+    }
   }
   if (animated.length === 0) return { sheet: null, list: [] }
 
@@ -208,7 +225,7 @@ function buildAnimations(
   if (!ctx) throw new Error('2D canvas is not available in this worker')
   ctx.imageSmoothingEnabled = false
 
-  const list = animated.map(({ id, bitmap, p, steps }) => {
+  const list = animated.map(({ id, bitmap, p, steps, interpolate }) => {
     const frames: AtlasAnimation['frames'] = []
     for (const frame of new Set(steps.map((s) => s.frame))) {
       const cell = layout.placements.get(`${id}#${frame}`)!
@@ -225,7 +242,7 @@ function buildAnimations(
       width: p.width + 2 * GUTTER,
       height: p.height + 2 * GUTTER,
     }
-    return { target, frames, steps }
+    return { target, frames, steps, interpolate }
   })
   const { data } = ctx.getImageData(0, 0, layout.size, layout.size)
   return { sheet: { width: layout.size, height: layout.size, pixels: data }, list }

@@ -29,6 +29,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | —   | `feature/flowing-water`            | Agua y lava que corren, con la superficie inclinada como en el juego       | ✅     |
 | —   | `fix/memory-assets-fallback`       | Recursos en memoria si el navegador no deja guardarlos (Brave, privado)    | ✅     |
 | —   | `feature/animated-textures`        | Texturas animadas (agua, lava, fuego…), con interruptor «Animar»           | ✅     |
+| —   | `feature/texture-interpolation`    | Mezcla suave entre fotogramas (prismarina, magma, tallos del Nether…)      | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

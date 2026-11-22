@@ -159,5 +159,5 @@ incluye una tabla de formatos → versiones, para no inventar correspondencias.
 - Un solo pack a la vez (sin pila de varios packs).
 - No se admiten formatos ajenos al juego: texturas conectadas de OptiFine (CTM), modelos
   emisivos, etc.
-- Las animaciones del pack se reproducen como las del juego (`.mcmeta`), sin la mezcla suave entre
-  fotogramas (`interpolate`).
+- Las animaciones del pack se reproducen como las del juego (`.mcmeta`), también la mezcla entre
+  fotogramas (`interpolate`); ver `RENDERING.md`.
