@@ -70,15 +70,22 @@ IndexedDB, base `litematicviewer`, almacén `assets`, tres registros:
 | `vanilla:lang`  | `en_us` (solo textos)           | Al arrancar                             |
 | `vanilla:files` | Todos los archivos extraídos    | Solo cuando los necesite el renderizado |
 
-Si IndexedDB no está disponible (modo privado, almacenamiento bloqueado), la app sigue funcionando
-sin recursos. El usuario puede quitarlos desde el diálogo.
+El usuario puede quitarlos desde el diálogo.
+
+**Si el navegador no deja guardar** (ventana privada, escudos de Brave, datos de sitios
+bloqueados), IndexedDB falla con `storage-failed`. En ese caso el jar o el pack no dan error: el
+worker devuelve los archivos extraídos (`memoryFiles`), `AssetManager` los guarda en memoria y el
+worker de modelos los recibe con cada petición (`assets/assetSource.ts`: primero la memoria, luego
+la caché; el pack encima). Se avisa de que solo duran mientras la app esté abierta y de cómo
+permitir el almacenamiento. Al arrancar no hay nada guardado, así que la app empieza sin recursos.
 
 ### Flujo
 
 ```text
 Diálogo «Recursos de Minecraft» ─► AssetManager.importJar(file)
    └─► [worker] loadClientJar: leer ─► readClientJar (zipReader + validación) ─► saveAssets (IndexedDB)
-   ◄── { meta, lang }  →  store `assets`  →  nombres oficiales en la lista de materiales
+   ◄── { meta, lang, memoryFiles }  →  store `assets`  →  nombres oficiales en la lista de materiales
+       (memoryFiles ≠ null solo si no se pudo guardar: quedan en memoria esta sesión)
 Arranque ─► assets.init() ─► loadAssetsSummary() (meta + lang)
 ```
 

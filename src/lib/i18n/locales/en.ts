@@ -197,6 +197,9 @@ export const en: Messages = {
     indicatorNone: 'No assets',
     readyTitle: 'Assets loaded',
     ready: 'Minecraft {version}: official names are now shown.',
+    memoryTitle: 'For this session only',
+    memory:
+      'Your browser does not let this site store data (private mode, Brave shields or blocked site data). The files work while the app stays open; to avoid loading them every time, allow storage for this site.',
     removedTitle: 'Assets removed from this browser',
     phase: {
       reading: 'Reading the file…',

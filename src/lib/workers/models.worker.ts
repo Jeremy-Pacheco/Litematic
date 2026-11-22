@@ -1,20 +1,24 @@
 /// <reference lib="webworker" />
 import { loadAssetFiles, loadPackFiles } from '../assets/assetCache'
+import { resolveGameFiles } from '../assets/assetSource'
 import { bakeModels, bakedTransferables } from '../models/bakeModels'
 import type { ModelsWorkerRequest, ModelsWorkerResponse } from './modelsProtocol'
 
 /**
  * Bakes block models and the texture atlas for a palette, off the main
- * thread. Game files are read from IndexedDB here, so the assets are never
- * copied through the main thread. The user's resource pack, if any, is laid
- * over the game files: what the pack lacks keeps the game's version.
+ * thread. Game files are read from IndexedDB here, so the assets are not
+ * copied through the main thread, unless the page sends them because the
+ * browser refused to store them (see `resolveGameFiles`).
  */
 const scope = self as unknown as DedicatedWorkerGlobalScope
 
 scope.onmessage = async (event: MessageEvent<ModelsWorkerRequest>) => {
   if (event.data.type !== 'bake') return
   try {
-    const files = await loadAssetFiles()
+    const files = await resolveGameFiles({
+      memory: event.data.memory,
+      cache: { files: loadAssetFiles, pack: loadPackFiles },
+    })
     if (!files) {
       const message: ModelsWorkerResponse = {
         type: 'error',
@@ -24,12 +28,7 @@ scope.onmessage = async (event: MessageEvent<ModelsWorkerRequest>) => {
       scope.postMessage(message)
       return
     }
-    const pack = await loadPackFiles()
-    const models = await bakeModels(
-      event.data.palette,
-      pack ? overlay(files, pack) : files,
-      event.data.data,
-    )
+    const models = await bakeModels(event.data.palette, files, event.data.data)
     const message: ModelsWorkerResponse = { type: 'done', models }
     scope.postMessage(message, bakedTransferables(models))
   } catch (error) {
@@ -40,14 +39,4 @@ scope.onmessage = async (event: MessageEvent<ModelsWorkerRequest>) => {
     }
     scope.postMessage(message)
   }
-}
-
-/** Game files with the pack's files replacing those with the same path. */
-function overlay(
-  base: Map<string, Uint8Array>,
-  top: Map<string, Uint8Array>,
-): Map<string, Uint8Array> {
-  const merged = new Map(base)
-  for (const [path, bytes] of top) merged.set(path, bytes)
-  return merged
 }

@@ -1,4 +1,5 @@
 import type { BakedModels } from '../models/bakeModels'
+import { AssetManager } from './AssetManager'
 import type { BlockRenderData } from '../models/blockEntityRender'
 import type { BlockState } from '../types/structure'
 import type {
@@ -47,7 +48,13 @@ export const ModelManager = {
         worker.terminate()
         reject(new ModelBakeError('bake-failed', event.message || 'Worker error'))
       }
-      const request: ModelsWorkerRequest = { type: 'bake', palette: [...palette], data: [...data] }
+      const request: ModelsWorkerRequest = {
+        type: 'bake',
+        palette: [...palette],
+        data: [...data],
+        // Copied to the worker (a few MB) only when the browser refused to store them.
+        memory: AssetManager.memoryFiles(),
+      }
       worker.postMessage(request)
     })
 

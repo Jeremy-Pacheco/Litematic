@@ -21,8 +21,10 @@ scope.onmessage = async (event: MessageEvent<AssetsWorkerRequest>) => {
     if (request.type === 'load-jar') {
       post({ type: 'done', ...(await loadClientJar(request.file, onPhase)) })
     } else if (request.type === 'load-pack') {
-      const meta = await loadResourcePack(request.file, request.gameFormat, onPhase)
-      post({ type: 'pack-done', meta })
+      post({
+        type: 'pack-done',
+        ...(await loadResourcePack(request.file, request.gameFormat, onPhase)),
+      })
     }
   } catch (error) {
     const assetError = toAssetError(error)

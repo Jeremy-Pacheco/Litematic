@@ -17,6 +17,7 @@ export async function importClientJar(file: File): Promise<void> {
       title: { key: 'assets.readyTitle' },
       message: { key: 'assets.ready', params: { version: outcome.meta.version.id } },
     })
+    if (outcome.inMemory) pushMemoryNotice()
   } else {
     toasts.push({
       kind: outcome.code === 'cancelled' ? 'info' : 'error',
@@ -44,6 +45,7 @@ export async function importResourcePack(file: File): Promise<void> {
       title: { key: 'pack.readyTitle' },
       message: { key: 'pack.ready', params: { name: file.name } },
     })
+    if (outcome.inMemory) pushMemoryNotice()
     if (packCompatibility(outcome.meta.supported, gameFormat) === 'other-version') {
       toasts.push({
         kind: 'info',
@@ -64,6 +66,15 @@ export async function importResourcePack(file: File): Promise<void> {
       message: { key: `assets.errors.${outcome.code}.message`, params: { name: file.name } },
     })
   }
+}
+
+/** The browser refused to store the files: they work until the app is closed. */
+function pushMemoryNotice(): void {
+  toasts.push({
+    kind: 'info',
+    title: { key: 'assets.memoryTitle' },
+    message: { key: 'assets.memory' },
+  })
 }
 
 export type DroppedKind = 'jar' | 'pack' | 'structure'
