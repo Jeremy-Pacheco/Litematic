@@ -28,6 +28,7 @@ Leyenda: ✅ implementada · 🚧 en desarrollo · ⏳ pendiente
 | —   | `feature/sign-font`                | Texto de los carteles con la letra del juego                               | ✅     |
 | —   | `feature/flowing-water`            | Agua y lava que corren, con la superficie inclinada como en el juego       | ✅     |
 | —   | `fix/memory-assets-fallback`       | Recursos en memoria si el navegador no deja guardarlos (Brave, privado)    | ✅     |
+| —   | `feature/animated-textures`        | Texturas animadas (agua, lava, fuego…), con interruptor «Animar»           | ✅     |
 
 La escritura de NBT y las funciones de edición se definirán cuando el visor esté
 terminado.

@@ -99,7 +99,9 @@ Arranque ─► assets.init() ─► loadAssetsSummary() (meta + lang)
 - El atlas se construye en un worker con `OffscreenCanvas` (el de Deepslate necesita `document`), solo con las texturas que usa la paleta de la estructura.
 - Empaquetado en estantes en un cuadrado potencia de dos, hasta 4096 px. Si las texturas no caben
   (packs de alta resolución), se reducen a 1/2, 1/4… hasta 1/16 y el visor lo avisa.
-- Texturas animadas: primer fotograma. Texturas ausentes: casilla magenta y negra de Minecraft.
+- Texturas animadas: el atlas lleva su primer fotograma y, aparte, una hoja con todos los que usa su
+  `.mcmeta` (con su borde y a la escala del atlas), que el visor copia encima con el tiempo (ver
+  `RENDERING.md`). Texturas ausentes: casilla magenta y negra de Minecraft.
 - La capa de cada textura (opaca, recortada, translúcida) se deduce de su canal alfa.
 - UV normalizadas con v hacia abajo: el visor subirá el atlas sin invertirlo.
 
@@ -157,4 +159,5 @@ incluye una tabla de formatos → versiones, para no inventar correspondencias.
 - Un solo pack a la vez (sin pila de varios packs).
 - No se admiten formatos ajenos al juego: texturas conectadas de OptiFine (CTM), modelos
   emisivos, etc.
-- Las animaciones muestran su primer fotograma, como las del juego.
+- Las animaciones del pack se reproducen como las del juego (`.mcmeta`), sin la mezcla suave entre
+  fotogramas (`interpolate`).

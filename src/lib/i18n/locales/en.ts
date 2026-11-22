@@ -261,6 +261,8 @@ export const en: Messages = {
     helpers: 'Visual helpers',
     grid: 'Grid',
     box: 'Box',
+    animate: 'Animate',
+    animateHint: 'Animate textures (water, lava, fire…). Turn it off to save battery.',
     background: 'Background',
     backgrounds: {
       theme: 'Theme',

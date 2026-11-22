@@ -19,6 +19,8 @@ const STORAGE_KEY = 'lv:viewer'
 interface ViewerSettings {
   grid: boolean
   box: boolean
+  /** Animated textures (water, lava, fire…) move. */
+  animate: boolean
   background: ViewerBackground
   panelOpen: boolean
   layersOpen: boolean
@@ -28,6 +30,7 @@ interface ViewerSettings {
 const DEFAULTS: ViewerSettings = {
   grid: true,
   box: true,
+  animate: true,
   background: 'theme',
   panelOpen: true,
   layersOpen: true,
@@ -53,6 +56,7 @@ export function parseViewerSettings(raw: string | null): ViewerSettings {
   return {
     grid: bool('grid'),
     box: bool('box'),
+    animate: bool('animate'),
     panelOpen: bool('panelOpen'),
     layersOpen: bool('layersOpen'),
     background,
@@ -71,6 +75,7 @@ export function backgroundColor(background: ViewerBackground, theme: 'light' | '
 class ViewerState {
   grid = $state(DEFAULTS.grid)
   box = $state(DEFAULTS.box)
+  animate = $state(DEFAULTS.animate)
   background = $state<ViewerBackground>(DEFAULTS.background)
   panelOpen = $state(DEFAULTS.panelOpen)
   layersOpen = $state(DEFAULTS.layersOpen)
@@ -85,6 +90,7 @@ class ViewerState {
     }
     this.grid = saved.grid
     this.box = saved.box
+    this.animate = saved.animate
     this.background = saved.background
     this.panelOpen = saved.panelOpen
     this.layersOpen = saved.layersOpen
@@ -95,6 +101,7 @@ class ViewerState {
     const settings: ViewerSettings = {
       grid: this.grid,
       box: this.box,
+      animate: this.animate,
       background: this.background,
       panelOpen: this.panelOpen,
       layersOpen: this.layersOpen,

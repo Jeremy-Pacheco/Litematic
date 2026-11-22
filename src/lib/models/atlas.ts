@@ -4,13 +4,15 @@ import { packAtlas, type AtlasLayout, type Placement, type TextureSize } from '.
 import { MISSING_TEXTURE, type BakeAtlas } from './bakeStates'
 import type { GameResources } from './gameResources'
 import { classifyAlpha, RenderLayer } from './renderLayer'
+import { animationSteps, type AnimationStep } from './textureAnimation'
 
 const Id = Identifier
 
 /**
  * Texture atlas built inside a worker (Deepslate's own atlas needs `document`).
  *
- * - Animated textures (with `.png.mcmeta`) contribute their first frame.
+ * - Animated textures (with `.png.mcmeta`) contribute their first frame; all
+ *   their frames go to a separate sheet (`animations`) for the viewer.
  * - Textures that are referenced but absent use the "missing" pattern
  *   (magenta and black, as in Minecraft), never an invented texture.
  * - Each texture's render layer is classified from its alpha channel.
@@ -28,6 +30,31 @@ export interface BuiltAtlas extends BakeAtlas {
    * a resource pack) had to be reduced to fit in the largest atlas.
    */
   scale: number
+  /** Frames of the animated textures, to be copied over the atlas as time passes. */
+  animations: AtlasAnimations
+}
+
+/** A rectangle of pixels (x, y from the top-left corner). */
+export interface PixelRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** One animated texture of the atlas. */
+export interface AtlasAnimation {
+  /** Its region in the atlas, gutter included: where frames are copied. */
+  target: PixelRect
+  /** Top-left corner of each frame (same size as `target`) in the frame sheet; `null` if unused. */
+  frames: ({ x: number; y: number } | null)[]
+  steps: AnimationStep[]
+}
+
+export interface AtlasAnimations {
+  /** RGBA sheet with every frame used, gutter included (`null` without animations). */
+  sheet: { width: number; height: number; pixels: Uint8ClampedArray } | null
+  list: AtlasAnimation[]
 }
 
 export async function buildAtlas(
@@ -94,9 +121,10 @@ export async function buildAtlas(
     // Source size in the original texture (the first frame for animations).
     const sourceHeight = frameHeight(id, bitmap)
     ctx.drawImage(bitmap, 0, 0, bitmap.width, sourceHeight, p.x, p.y, p.width, p.height)
-    bitmap.close()
   }
   for (const p of inner.values()) extrudeEdges(ctx, canvas, p)
+  const animations = buildAnimations(bitmaps, inner, resources)
+  for (const bitmap of bitmaps.values()) bitmap.close()
 
   const pixels = ctx.getImageData(0, 0, layout.size, layout.size).data
   const regions = [...inner].map(([id, p]) => ({
@@ -120,6 +148,7 @@ export async function buildAtlas(
     pixels,
     missingTextures: missingTextures.sort(),
     scale,
+    animations,
     getTextureAtlas: () => new ImageData(pixels, layout.size, layout.size),
     getTextureUV(id: Identifier) {
       const key = id.toString()
@@ -137,6 +166,69 @@ export async function buildAtlas(
       return RenderLayer.Opaque
     },
   }
+}
+
+/**
+ * The frames of every animated texture (a strip of square frames with a
+ * valid `.mcmeta`), drawn at the size of its atlas region with the same
+ * gutter, packed into one sheet. Only frames the animation shows are kept.
+ * If they do not fit in the largest texture, textures stay still.
+ */
+function buildAnimations(
+  bitmaps: ReadonlyMap<string, ImageBitmap>,
+  inner: ReadonlyMap<string, Placement>,
+  resources: GameResources,
+): AtlasAnimations {
+  const animated: { id: string; bitmap: ImageBitmap; p: Placement; steps: AnimationStep[] }[] = []
+  for (const [id, bitmap] of bitmaps) {
+    const identifier = Id.parse(id)
+    if (!resources.hasAnimation(identifier) || bitmap.height <= bitmap.width) continue
+    const frameCount = Math.floor(bitmap.height / bitmap.width)
+    const steps = animationSteps(resources.getAnimation(identifier), frameCount)
+    if (steps) animated.push({ id, bitmap, p: inner.get(id)!, steps })
+  }
+  if (animated.length === 0) return { sheet: null, list: [] }
+
+  const cells = animated.flatMap(({ id, p, steps }) =>
+    [...new Set(steps.map((s) => s.frame))].map((frame) => ({
+      id: `${id}#${frame}`,
+      width: p.width + 2 * GUTTER,
+      height: p.height + 2 * GUTTER,
+    })),
+  )
+  let layout: AtlasLayout
+  try {
+    layout = packAtlas(cells)
+  } catch (error) {
+    if (error instanceof RangeError) return { sheet: null, list: [] }
+    throw error
+  }
+  const canvas = new OffscreenCanvas(layout.size, layout.size)
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('2D canvas is not available in this worker')
+  ctx.imageSmoothingEnabled = false
+
+  const list = animated.map(({ id, bitmap, p, steps }) => {
+    const frames: AtlasAnimation['frames'] = []
+    for (const frame of new Set(steps.map((s) => s.frame))) {
+      const cell = layout.placements.get(`${id}#${frame}`)!
+      const at = { x: cell.x + GUTTER, y: cell.y + GUTTER, width: p.width, height: p.height }
+      const side = bitmap.width
+      ctx.drawImage(bitmap, 0, frame * side, side, side, at.x, at.y, at.width, at.height)
+      extrudeEdges(ctx, canvas, at)
+      frames[frame] = { x: cell.x, y: cell.y }
+    }
+    for (let i = 0; i < frames.length; i++) frames[i] ??= null
+    const target = {
+      x: p.x - GUTTER,
+      y: p.y - GUTTER,
+      width: p.width + 2 * GUTTER,
+      height: p.height + 2 * GUTTER,
+    }
+    return { target, frames, steps }
+  })
+  const { data } = ctx.getImageData(0, 0, layout.size, layout.size)
+  return { sheet: { width: layout.size, height: layout.size, pixels: data }, list }
 }
 
 /** Largest resolution divisor tried before giving up. */

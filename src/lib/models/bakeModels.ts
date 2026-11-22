@@ -1,5 +1,5 @@
 import type { BlockState } from '../types/structure'
-import { buildAtlas } from './atlas'
+import { buildAtlas, type AtlasAnimations } from './atlas'
 import { bakePalette, collectTextureIds, type BakedState } from './bakeStates'
 import type { BlockRenderData } from './blockEntityRender'
 import { GameResources } from './gameResources'
@@ -10,6 +10,8 @@ export interface BakedModels {
   /** One entry per palette index. */
   states: BakedState[]
   atlas: { size: number; pixels: Uint8ClampedArray }
+  /** Frames of the animated textures, copied over the atlas by the viewer. */
+  animations: AtlasAnimations
   /** Block ids without a model (drawn with the missing texture). */
   missingBlocks: string[]
   /** Textures referenced but absent from the game files. */
@@ -42,6 +44,7 @@ export async function bakeModels(
   return {
     states,
     atlas: { size: atlas.size, pixels: atlas.pixels },
+    animations: atlas.animations,
     missingBlocks,
     missingTextures: atlas.missingTextures,
     textureScale: atlas.scale,
@@ -56,6 +59,7 @@ export function bakedTransferables(models: BakedModels): ArrayBuffer[] {
     models.atlas.pixels.buffer as ArrayBuffer,
     ...fontTransferables(models.signFont),
   ]
+  if (models.animations.sheet) buffers.push(models.animations.sheet.pixels.buffer as ArrayBuffer)
   for (const state of models.states) {
     for (const groups of state.geometry) {
       for (const g of groups) {

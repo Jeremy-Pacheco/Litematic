@@ -102,4 +102,10 @@ describe('saved preferences', () => {
     expect(parseViewerSettings('{"layersOpen":false}').layersOpen).toBe(false)
     expect(parseViewerSettings(null).layersOpen).toBe(true)
   })
+
+  it('animates textures unless turned off', () => {
+    expect(parseViewerSettings(null).animate).toBe(true)
+    expect(parseViewerSettings('{"animate":false}').animate).toBe(false)
+    expect(parseViewerSettings('{"animate":"no"}').animate).toBe(true)
+  })
 })

@@ -127,6 +127,10 @@
     scene?.setHelpers({ grid: viewer.grid, box: viewer.box })
   })
 
+  $effect(() => {
+    manager?.setAnimated(viewer.animate)
+  })
+
   // Layers: cut the structure (cheap, no rebuild) and outline the current one.
   $effect(() => {
     const range = layers.range
