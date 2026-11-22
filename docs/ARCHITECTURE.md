@@ -52,6 +52,7 @@ docs/                    Documentación
 | `assets/zipReader.ts`                           | Extracción segura de ZIP: rutas, límites, CRC-32                                              |
 | `assets/minecraftJar.ts`                        | Valida el client.jar, lee `version.json` y elige qué extraer                                  |
 | `assets/assetCache.ts`                          | Caché IndexedDB (meta, idioma, archivos)                                                      |
+| `assets/assetSource.ts`                         | De dónde toma los archivos el worker de modelos: memoria (si no se pudo guardar) o caché      |
 | `models/gameResources.ts`                       | Block states y modelos del juego para Deepslate (caché, herencia resuelta)                    |
 | `models/atlasPacking.ts`                        | Empaquetado del atlas en estantes                                                             |
 | `models/renderLayer.ts`                         | Capa de dibujo según el canal alfa                                                            |
