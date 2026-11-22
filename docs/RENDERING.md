@@ -83,6 +83,17 @@ clásica. En el jar 26.3 solo lo usa `template_hanging_sign_rot_3` (colgantes si
 `rotation` 3, 7, 11 y 15), cuyo giro se reduce a uno en Y. Un giro que no se reduzca a un eje se
 deja tal cual y el bloque se dibuja como «falta modelo», como antes.
 
+### Texturas animadas (`models/textureAnimation.ts`, `viewer/atlasAnimation.ts`)
+
+Agua, lava, fuego, portales, linternas marinas… son tiras de fotogramas cuadrados con un
+`.png.mcmeta` (`frametime`, `frames` con su `index` y `time`). El atlas lleva el primer fotograma
+y, en el worker, una hoja aparte con cada fotograma que se usa, dibujado al tamaño de su hueco del
+atlas y con su borde. En el visor, `AtlasAnimator` calcula 10 veces por segundo qué fotograma toca a
+cada textura según el tiempo (20 ticks por segundo, como el juego) y, solo si cambia, lo copia sobre
+su hueco del atlas (`copyTextureToTexture`, que sube únicamente esa región). Las mallas no cambian y
+la escena se redibuja solo cuando algún fotograma cambió. El botón «Animar» de la barra lo apaga
+(se recuerda); con la pestaña oculta no hace nada. Coste medido en `PERFORMANCE.md`.
+
 ### Texto de los carteles (`viewer/signText.ts`, `viewer/signTextMeshes.ts`)
 
 El texto se lee del block entity en todos sus formatos (`front_text`/`back_text` de 1.20+, con
@@ -305,5 +316,6 @@ también al pulsar en el aire de su celda.
   texto (negrita, colores por tramo); y como mucho 512 caras con
   texto por estructura (4 páginas); las que sobran no se dibujan y se avisa.
 - **Estandartes:** como mucho 16 capas de dibujos por estandarte.
-- **Texturas animadas:** se usa el primer fotograma.
+- **Texturas animadas:** se cambia de fotograma sin la mezcla suave del juego (`interpolate`), y a
+  lo sumo 10 veces por segundo (el agua que corre cambia en cada tick en el juego).
 - **Tintes:** colores de bioma por defecto (Deepslate `BlockColors`), no los del bioma real.

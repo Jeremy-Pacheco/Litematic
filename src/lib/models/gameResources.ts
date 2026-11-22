@@ -57,6 +57,11 @@ export class GameResources implements BlockDefinitionProvider, BlockModelProvide
     return this.#files.has(`assets/${id.namespace}/textures/${id.path}.png.mcmeta`)
   }
 
+  /** The parsed `.png.mcmeta` of a texture, or `null`. */
+  getAnimation(id: Identifier): unknown {
+    return this.#json(`assets/${id.namespace}/textures/${id.path}.png.mcmeta`)
+  }
+
   #json(path: string): unknown {
     const bytes = this.#files.get(path)
     if (!bytes) return null

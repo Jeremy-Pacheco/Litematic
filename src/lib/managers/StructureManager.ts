@@ -15,6 +15,7 @@ import type { LayerRange } from '../viewer/layers'
 import { createAtlasTexture, createLayerMaterials, LAYER_RENDER_ORDER } from '../viewer/materials'
 import { planMeshing, workerCount } from '../viewer/meshingPlan'
 import { buildSignTextMeshes } from '../viewer/signTextMeshes'
+import { AtlasAnimator } from '../viewer/atlasAnimation'
 import { SECTION_HEIGHT, type CapSide, type LayerMesh, type SectionMesh } from '../viewer/mesher'
 import type { MesherRequest, MesherResponse, MesherStats } from '../workers/mesherProtocol'
 import { ModelManager } from './ModelManager'
@@ -81,9 +82,18 @@ export class StructureManager {
   #queue: SectionMesh[] = []
   #flushScheduled = false
   #drained: (() => void) | null = null
+  /** Animated textures of the current structure (water, lava, fire…). */
+  #animator: AtlasAnimator | null = null
+  #animate = true
 
   constructor(scene: SceneManager) {
     this.#scene = scene
+  }
+
+  /** Turns the texture animation on or off (kept for the next structures). */
+  setAnimated(enabled: boolean): void {
+    this.#animate = enabled
+    this.#animator?.setEnabled(enabled)
   }
 
   async show(structure: Structure, onProgress?: (p: ShowProgress) => void): Promise<ShowResult> {
@@ -105,6 +115,10 @@ export class StructureManager {
     this.#texture = createAtlasTexture(models.atlas.pixels, models.atlas.size)
     this.#materials = createLayerMaterials(this.#texture, this.#planes)
     this.#capMaterials = createLayerMaterials(this.#texture)
+    this.#animator = new AtlasAnimator(this.#scene.renderer, this.#texture, models.animations, () =>
+      this.#scene.requestRender(),
+    )
+    this.#animator.setEnabled(this.#animate)
 
     const stats = await this.#mesh({ ...structure, blocks: variants.blocks }, models, onProgress)
     // Sign text on top of the boards (cut by the same layer planes), placed
@@ -164,6 +178,8 @@ export class StructureManager {
     ;[...this.#materials, ...this.#capMaterials].forEach((m) => m.dispose())
     this.#materials = []
     this.#capMaterials = []
+    this.#animator?.dispose()
+    this.#animator = null
     this.#texture?.dispose()
     this.#texture = null
   }

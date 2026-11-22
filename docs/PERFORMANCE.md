@@ -293,5 +293,24 @@ Tras `feature/structure-viewer`:
 | `legacyBlocks.js`                    |  99,26 kB |   12,3 kB | Solo con `.schematic`            |
 
 La interfaz no hace trabajo continuo: no hay bucles de animación ni temporizadores salvo el
-cierre automático de las notificaciones y los mensajes de progreso durante una lectura. El visor
-solo dibuja cuando cambia la cámara o la escena.
+cierre automático de las notificaciones, los mensajes de progreso durante una lectura y las
+texturas animadas. El visor solo dibuja cuando cambia la cámara o la escena.
+
+### Texturas animadas (`feature/animated-textures`)
+
+Con «Animar» activado y texturas animadas en la estructura, el visor comprueba los fotogramas 10
+veces por segundo, copia sobre el atlas solo los que cambian (unos KB cada uno) y redibuja si
+alguno cambió. Sin texturas animadas, apagado o con la pestaña oculta, no hace nada. Medido con la
+app real en Chrome (GPU del equipo, ventana de 1400 × 900, durante 5 s), en escenas de agua quieta,
+agua que corre y lava:
+
+| Escena                                              | Hilo principal, encendido |  Apagado |
+| --------------------------------------------------- | ------------------------: | -------: |
+| 24 × 3 × 24 (1 152 bloques)                         |                 11,7 ms/s | 0,1 ms/s |
+| 256 × 3 × 256 (131 072 bloques, 366 000 triángulos) |                 17,0 ms/s | 0,1 ms/s |
+
+Es decir, menos del 2 % del hilo principal: la interfaz no se resiente. El dibujo en sí lo hace la
+GPU; el proceso de Chrome entero rondó el 30 % de un núcleo en modo _headless_ (que copia cada imagen
+a memoria al no tener pantalla), así que en una ventana normal se espera menos, pero no se midió.
+Primera versión: redibujaba en cada tick (20 veces por segundo, por el agua que corre); ahora cada
+dos ticks, con el agua a su velocidad real.

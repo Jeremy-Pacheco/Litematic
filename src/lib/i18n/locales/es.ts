@@ -271,6 +271,8 @@ export const es = {
     helpers: 'Ayudas visuales',
     grid: 'Cuadrícula',
     box: 'Caja',
+    animate: 'Animar',
+    animateHint: 'Animar las texturas (agua, lava, fuego…). Apágalo para ahorrar batería.',
     background: 'Fondo',
     backgrounds: {
       theme: 'Tema',

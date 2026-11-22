@@ -25,7 +25,7 @@
     if (files.length > 0) void openStructureFiles(files)
   }
 
-  function toggle(key: 'grid' | 'box' | 'layersOpen' | 'panelOpen'): void {
+  function toggle(key: 'grid' | 'box' | 'animate' | 'layersOpen' | 'panelOpen'): void {
     viewer[key] = !viewer[key]
     viewer.save()
   }
@@ -76,6 +76,16 @@
     >
       <Icon name="box" size={15} />
       <span class="label">{i18n.t('viewer.box')}</span>
+    </button>
+    <button
+      type="button"
+      class="tool"
+      aria-pressed={viewer.animate}
+      title={i18n.t('viewer.animateHint')}
+      onclick={() => toggle('animate')}
+    >
+      <Icon name="wave" size={15} />
+      <span class="label">{i18n.t('viewer.animate')}</span>
     </button>
   </div>
 

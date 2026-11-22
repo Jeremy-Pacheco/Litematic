@@ -63,6 +63,8 @@ docs/                    Documentación
 | `managers/AssetManager.ts`                      | API de recursos del juego para el resto de la app; worker por jar                             |
 | `models/bakedTypes.ts`                          | Tipos y constantes del bake sin Deepslate (los usa el mesher)                                 |
 | `viewer/mesher.ts`                              | Secciones de 32 × 16 × 32 → mallas por capa, caras ocultas (también entre fluidos), sombreado |
+| `models/textureAnimation.ts`                    | Animaciones de textura del juego (`.mcmeta`): pasos y fotograma de cada tick                  |
+| `viewer/atlasAnimation.ts`                      | Copia sobre el atlas el fotograma que toca a cada textura animada y pide redibujar            |
 | `viewer/fluidSurface.ts`                        | Forma de los fluidos como el juego: alturas de las esquinas, flujo, superficie y caras        |
 | `viewer/meshingPlan.ts`                         | Reparto del mallado entre workers por bandas de filas con peso de bloques parecido            |
 | `viewer/materials.ts`                           | Textura del atlas y un material por capa                                                      |
