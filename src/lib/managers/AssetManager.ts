@@ -17,12 +17,36 @@ export interface AssetTask<T> {
   cancel: () => void
 }
 
-export type AssetLoadTask = AssetTask<LoadedAssets>
+/** An imported jar; `inMemory` when the browser refused to store it (used for this session only). */
+export type ImportedAssets = Pick<LoadedAssets, 'meta' | 'lang'> & { inMemory: boolean }
+export type ImportedPack = { meta: PackMeta; inMemory: boolean }
+
+export type AssetLoadTask = AssetTask<ImportedAssets>
+
+/**
+ * Files kept in memory because the browser does not let the app store them
+ * (private mode, Brave shields, blocked site data). They last until the page
+ * is closed; the models worker receives them with each request.
+ */
+const memory: { files: Map<string, Uint8Array> | null; pack: Map<string, Uint8Array> | null } = {
+  files: null,
+  pack: null,
+}
+
+/** Runs a cache removal; nothing to remove when the browser does not allow storage. */
+async function clearIgnoringBlockedStorage(clear: () => Promise<void>): Promise<void> {
+  try {
+    await clear()
+  } catch (error) {
+    if (!(error instanceof AssetError && error.code === 'storage-failed')) throw error
+  }
+}
 
 /**
  * Single entry point to the game assets (textures, models, translations) and
  * the user's resource pack. Both come from the user's own files and are
- * cached in IndexedDB; they are never bundled or uploaded.
+ * cached in IndexedDB (or kept in memory when the browser refuses to store
+ * them); they are never bundled or uploaded.
  */
 export const AssetManager = {
   /** Cached version and translations, or `null` if none were loaded yet. */
@@ -32,18 +56,26 @@ export const AssetManager = {
 
   /** All cached files by path (for the renderer). */
   loadFiles(): Promise<Map<string, Uint8Array> | null> {
-    return loadAssetFiles()
+    return memory.files ? Promise.resolve(memory.files) : loadAssetFiles()
+  },
+
+  /** Game files and pack kept in memory this session (`null` when they are cached). */
+  memoryFiles(): { files: Map<string, Uint8Array> | null; pack: Map<string, Uint8Array> | null } {
+    return { ...memory }
   },
 
   /** Extracts and caches a client jar in a dedicated worker. */
   importJar(file: File, onPhase?: (phase: AssetPhase) => void): AssetLoadTask {
-    return runWorker({ type: 'load-jar', file }, onPhase, (message) =>
-      message.type === 'done' ? { meta: message.meta, lang: message.lang } : undefined,
-    )
+    return runWorker({ type: 'load-jar', file }, onPhase, (message) => {
+      if (message.type !== 'done') return undefined
+      memory.files = message.memoryFiles
+      return { meta: message.meta, lang: message.lang, inMemory: message.memoryFiles !== null }
+    })
   },
 
-  remove(): Promise<void> {
-    return clearAssets()
+  async remove(): Promise<void> {
+    memory.files = null
+    await clearIgnoringBlockedStorage(clearAssets)
   },
 
   /** The cached resource pack, or `null`. */
@@ -59,14 +91,17 @@ export const AssetManager = {
     file: File,
     gameFormat: number | null,
     onPhase?: (phase: AssetPhase) => void,
-  ): AssetTask<PackMeta> {
-    return runWorker({ type: 'load-pack', file, gameFormat }, onPhase, (message) =>
-      message.type === 'pack-done' ? message.meta : undefined,
-    )
+  ): AssetTask<ImportedPack> {
+    return runWorker({ type: 'load-pack', file, gameFormat }, onPhase, (message) => {
+      if (message.type !== 'pack-done') return undefined
+      memory.pack = message.memoryFiles
+      return { meta: message.meta, inMemory: message.memoryFiles !== null }
+    })
   },
 
-  removePack(): Promise<void> {
-    return clearPack()
+  async removePack(): Promise<void> {
+    memory.pack = null
+    await clearIgnoringBlockedStorage(clearPack)
   },
 }
 

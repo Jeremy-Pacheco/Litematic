@@ -1,10 +1,17 @@
 import { savePack, type PackMeta } from './assetCache'
 import { readResourcePack } from './resourcePack'
-import type { AssetPhase } from './loadClientJar'
+import { storeOrKeep, type AssetPhase } from './loadClientJar'
+
+export interface LoadedPack {
+  meta: PackMeta
+  /** The pack's files when the browser refused to store them (see `LoadedAssets`). */
+  memoryFiles: Map<string, Uint8Array> | null
+}
 
 /**
  * Full pipeline for a selected resource pack: read → extract safely → cache.
- * Runs in the assets worker; kept free of worker APIs so it can be tested.
+ * Runs in the assets worker; kept free of worker APIs so it can be tested. If
+ * the cache cannot be written, the files are returned to be used from memory.
  *
  * @param gameFormat resource pack format of the loaded game, to choose the
  * pack's overlays (`null` if unknown: only the base files are used).
@@ -13,7 +20,7 @@ export async function loadResourcePack(
   file: Blob & { name?: string },
   gameFormat: number | null,
   onPhase?: (phase: AssetPhase) => void,
-): Promise<PackMeta> {
+): Promise<LoadedPack> {
   onPhase?.('reading')
   const data = new Uint8Array(await file.arrayBuffer())
 
@@ -32,6 +39,6 @@ export async function loadResourcePack(
   }
 
   onPhase?.('saving')
-  await savePack(meta, files)
-  return meta
+  const stored = await storeOrKeep(() => savePack(meta, files))
+  return { meta, memoryFiles: stored ? null : files }
 }

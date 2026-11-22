@@ -205,6 +205,9 @@ export const es = {
     indicatorNone: 'Sin recursos',
     readyTitle: 'Recursos cargados',
     ready: 'Minecraft {version}: ya se muestran los nombres oficiales.',
+    memoryTitle: 'Solo para esta sesión',
+    memory:
+      'Tu navegador no deja guardar datos a esta web (modo privado, escudos de Brave o datos de sitios bloqueados). Los archivos funcionan mientras tengas la app abierta; para no tener que cargarlos cada vez, permite el almacenamiento para esta web.',
     removedTitle: 'Recursos eliminados de este navegador',
     phase: {
       reading: 'Leyendo el archivo…',

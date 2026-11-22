@@ -10,7 +10,8 @@ export type AssetsStatus =
   | { kind: 'ready'; meta: AssetsMeta }
 
 export type AssetsImportOutcome =
-  { kind: 'ready'; meta: AssetsMeta } | { kind: 'error'; code: AssetErrorCode; message: string }
+  | { kind: 'ready'; meta: AssetsMeta; inMemory: boolean }
+  | { kind: 'error'; code: AssetErrorCode; message: string }
 
 /** Reactive state of the game assets for the UI. */
 class AssetsState {
@@ -45,10 +46,10 @@ class AssetsState {
     })
     this.#task = task
     try {
-      const { meta, lang } = await task.promise
+      const { meta, lang, inMemory } = await task.promise
       this.lang = lang
       this.status = { kind: 'ready', meta }
-      return { kind: 'ready', meta }
+      return { kind: 'ready', meta, inMemory }
     } catch (error) {
       const { code, message } = toAssetError(error)
       this.status = previous.kind === 'ready' ? previous : { kind: 'none' }

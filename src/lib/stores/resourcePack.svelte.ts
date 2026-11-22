@@ -1,13 +1,14 @@
 import type { PackMeta } from '../assets/assetCache'
 import { toAssetError, type AssetErrorCode } from '../assets/errors'
 import type { AssetPhase } from '../assets/loadClientJar'
-import { AssetManager, type AssetTask } from '../managers/AssetManager'
+import { AssetManager, type AssetTask, type ImportedPack } from '../managers/AssetManager'
 
 export type PackStatus =
   { kind: 'none' } | { kind: 'loading'; phase: AssetPhase } | { kind: 'ready'; meta: PackMeta }
 
 export type PackImportOutcome =
-  { kind: 'ready'; meta: PackMeta } | { kind: 'error'; code: AssetErrorCode; message: string }
+  | { kind: 'ready'; meta: PackMeta; inMemory: boolean }
+  | { kind: 'error'; code: AssetErrorCode; message: string }
 
 /**
  * The user's resource pack (one at a time). The viewer rebuilds its textures
@@ -21,7 +22,7 @@ class ResourcePackState {
    */
   revision = $state(0)
 
-  #task: AssetTask<PackMeta> | null = null
+  #task: AssetTask<ImportedPack> | null = null
 
   /** The pack in use, or `null` for the game's own textures. */
   get active(): PackMeta | null {
@@ -50,10 +51,10 @@ class ResourcePackState {
     })
     this.#task = task
     try {
-      const meta = await task.promise
+      const { meta, inMemory } = await task.promise
       this.status = { kind: 'ready', meta }
       this.revision++
-      return { kind: 'ready', meta }
+      return { kind: 'ready', meta, inMemory }
     } catch (error) {
       const { code, message } = toAssetError(error)
       // A failed import keeps the previous pack (the cache was not touched).

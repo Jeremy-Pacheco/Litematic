@@ -7,11 +7,18 @@ export type AssetPhase = 'reading' | 'extracting' | 'saving'
 export interface LoadedAssets {
   meta: AssetsMeta
   lang: LangTable
+  /**
+   * The extracted files when the browser refused to store them (private
+   * mode, Brave shields, blocked site data…): the app keeps them in memory
+   * for the session instead. `null` when they were cached as usual.
+   */
+  memoryFiles: Map<string, Uint8Array> | null
 }
 
 /**
  * Full pipeline for a selected jar: read → extract safely → cache. Runs in the
- * assets worker; kept free of worker APIs so it can be tested.
+ * assets worker; kept free of worker APIs so it can be tested. If the cache
+ * cannot be written, the files are returned to be used from memory.
  */
 export async function loadClientJar(
   file: Blob,
@@ -29,8 +36,23 @@ export async function loadClientJar(
   const meta: AssetsMeta = { version, fileCount: files.size, bytes, savedAt: Date.now() }
 
   onPhase?.('saving')
-  await saveAssets(meta, lang, files)
-  return { meta, lang }
+  const stored = await storeOrKeep(() => saveAssets(meta, lang, files))
+  return { meta, lang, memoryFiles: stored ? null : files }
+}
+
+/**
+ * Runs a cache write. `false` when the browser does not let the app store
+ * data (`storage-failed`): the caller keeps the data in memory instead. Other
+ * errors are rethrown.
+ */
+export async function storeOrKeep(save: () => Promise<void>): Promise<boolean> {
+  try {
+    await save()
+    return true
+  } catch (error) {
+    if (error instanceof AssetError && error.code === 'storage-failed') return false
+    throw error
+  }
 }
 
 /** Keeps only string values; anything else in the file is ignored. */
