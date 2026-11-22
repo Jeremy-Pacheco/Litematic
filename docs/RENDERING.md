@@ -94,6 +94,14 @@ su hueco del atlas (`copyTextureToTexture`, que sube únicamente esa región). L
 la escena se redibuja solo cuando algún fotograma cambió. El botón «Animar» de la barra lo apaga
 (se recuerda); con la pestaña oculta no hace nada. Coste medido en `PERFORMANCE.md`.
 
+**Mezcla entre fotogramas (`"interpolate": true`):** prismarina, magma, sculk, tallos carmesí y
+distorsionado, fogatas, bloques de comandos y alto horno encendido funden cada fotograma con el
+siguiente, como el juego: cada canal de color `(1 − t) · actual + t · siguiente`, con `t` en ticks
+enteros dentro del fotograma, y la transparencia del actual. La mezcla se calcula en la CPU solo para
+el hueco de esa textura (unos 1 300 píxeles) y se sube igual que un fotograma. Se redondea a 1/32:
+la textura solo se actualiza cuando cambia de nivel, así que la prismarina (15 s por fotograma) se
+actualiza cada medio segundo, no en cada comprobación.
+
 ### Texto de los carteles (`viewer/signText.ts`, `viewer/signTextMeshes.ts`)
 
 El texto se lee del block entity en todos sus formatos (`front_text`/`back_text` de 1.20+, con
@@ -316,6 +324,7 @@ también al pulsar en el aire de su celda.
   texto (negrita, colores por tramo); y como mucho 512 caras con
   texto por estructura (4 páginas); las que sobran no se dibujan y se avisa.
 - **Estandartes:** como mucho 16 capas de dibujos por estandarte.
-- **Texturas animadas:** se cambia de fotograma sin la mezcla suave del juego (`interpolate`), y a
-  lo sumo 10 veces por segundo (el agua que corre cambia en cada tick en el juego).
+- **Texturas animadas:** se actualizan a lo sumo 10 veces por segundo (el agua que corre y las
+  mezclas rápidas cambian en cada tick en el juego), y la mezcla tiene 32 niveles en lugar de uno por
+  tick.
 - **Tintes:** colores de bioma por defecto (Deepslate `BlockColors`), no los del bioma real.
