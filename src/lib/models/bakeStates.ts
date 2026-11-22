@@ -1,5 +1,6 @@
 import { BlockState as DsBlockState, Identifier } from 'deepslate/core'
 import {
+  BlockColors,
   BlockModel,
   Mesh,
   SpecialRenderers,
@@ -20,8 +21,7 @@ import {
   INNER_GROUP,
   MISSING_TEXTURE,
   type BakedState,
-  type Face,
-  type LayeredGeometry,
+  type FluidRender,
   type QuadGeometry,
 } from './bakedTypes'
 import { RENDER_LAYERS, RenderLayer } from './renderLayer'
@@ -75,7 +75,7 @@ export function collectTextureIds(
   }
   palette.forEach((state, i) => {
     meshOf(state, resources, recorder, {}, data[i] ?? null)
-    fluidMeshOf(state, fluidOf(state), recorder, {})
+    for (const id of fluidTextures(fluidOf(state)) ?? []) ids.add(id.toString())
   })
   return ids
 }
@@ -103,86 +103,61 @@ export function bakeState(
 ): BakedState {
   if (isAirId(state.name)) return emptyState()
   const model = meshOf(state, resources, atlas, {}, data)
-  // The fluid a block holds is baked apart from its model, so the mesher can
-  // hide it next to the same fluid (one volume of water, not a surface per
-  // block) while the model keeps its own faces.
+  // The fluid a block holds is drawn apart from its model: the mesher builds
+  // its shape from the neighbours (sloped surface, faces hidden next to the
+  // same fluid), as the game does.
   const fluid = fluidOf(state)
-  const fluidMesh = fluidMeshOf(state, fluid, atlas, {})
-  const missing = model === null && !(fluidMesh && FLUID_BLOCKS.has(state.name))
+  const fluidRender = fluidRenderOf(fluid, atlas)
+  const missing = model === null && !FLUID_BLOCKS.has(state.name)
   const quads = missing ? missingCube(atlas) : (model?.mesh.quads ?? [])
-  const fluidGeometry = fluidMesh ? sortQuads(fluidMesh.quads, atlas).geometry : null
-  // With the same fluid above: full height and no top face.
-  const fullMesh = fluidGeometry ? fluidMeshOf(state, fluid, atlas, { up: true }) : null
   return {
     ...sortQuads(quads, atlas),
     missing,
     specialModel: model?.special ?? false,
-    empty: quads.length === 0 && fluidGeometry === null,
+    empty: quads.length === 0 && fluidRender === null,
     fluid,
-    fluidGeometry,
-    fluidFull:
-      fluidGeometry && fullMesh
-        ? withTopAtFullHeight(sortQuads(fullMesh.quads, atlas).geometry, fluidGeometry)
-        : null,
+    fluidHeight: fluidHeightOf(state, fluid),
+    fluidRender,
   }
 }
 
-/**
- * Mesh of the fluid filling a position: the liquid of water and lava blocks
- * (with their level), or a water source for waterlogged blocks.
- */
-function fluidMeshOf(
-  state: BlockState,
-  fluid: number,
-  atlas: TextureAtlasProvider,
-  cull: Partial<Record<Face, boolean>>,
-): Mesh | null {
+/** Texture ids of a fluid: still and flowing. */
+function fluidTextures(fluid: number): [Identifier, Identifier] | null {
   if (fluid === FLUID_NONE) return null
-  const block = FLUID_BLOCKS.has(state.name)
-    ? new DsBlockState(Identifier.parse(state.name), { ...state.properties })
-    : DsBlockState.WATER
-  const mesh = SpecialRenderers.getBlockMesh(block, undefined, atlas, cull)
-  return mesh.isEmpty() ? null : mesh
+  const name = fluid === FLUID_LAVA ? 'lava' : 'water'
+  return [Identifier.create(`block/${name}_still`), Identifier.create(`block/${name}_flow`)]
+}
+
+/** Atlas rectangles, tint and layer of a fluid. */
+function fluidRenderOf(fluid: number, atlas: BakeAtlas): FluidRender | null {
+  const textures = fluidTextures(fluid)
+  if (!textures) return null
+  // Same small inset towards the centre as model UVs (see `UV_INSET_PIXELS`).
+  const inset = (atlas.getPixelSize?.() ?? 0) * UV_INSET_PIXELS
+  const [still, flow] = textures.map((id) => {
+    const [u0, v0, u1, v1] = atlas.getTextureUV(id)
+    return [u0 + inset, v0 + inset, u1 - inset, v1 - inset] as FluidRender['still']
+  })
+  const tint = fluid === FLUID_WATER ? BlockColors.water?.({}) : undefined
+  return {
+    still,
+    flow,
+    color: tint ? [tint[0], tint[1], tint[2]] : [1, 1, 1],
+    layer: atlas.layerAt((still[0] + still[2]) / 2, (still[1] + still[3]) / 2),
+  }
 }
 
 /**
- * Deepslate drops the top face of a fluid with fluid above. The mesher hides
- * it anyway in that case, but a layer cut needs it (the cap at the cut), so
- * the surface of the normal shape is added back at full height, on the top
- * side group where the usual culling applies.
+ * The game's own height of the fluid in a block (`FluidState.getOwnHeight`):
+ * amount / 9, where a source or falling fluid has 8 and flowing fluid
+ * `8 - level`. Waterlogged blocks hold a source.
  */
-function withTopAtFullHeight(full: LayeredGeometry, normal: LayeredGeometry): LayeredGeometry {
-  return full.map((groups, layer) => {
-    const surface = normal[layer][INNER_GROUP]
-    const top = surface ? liftTop(surface) : null
-    if (!top) return groups
-    const copy = [...groups]
-    copy[FACES.indexOf('up')] = top
-    return copy
-  })
-}
-
-/** The upward-facing quads of a geometry, moved to the top of the block (y = 1). */
-function liftTop(geometry: QuadGeometry): QuadGeometry | null {
-  const keep: number[] = []
-  for (let q = 0; q < geometry.quadCount; q++) {
-    if (geometry.normals[q * 12 + 1] > 0.5) keep.push(q)
-  }
-  if (keep.length === 0) return null
-  const pick = (array: Float32Array, size: number) => {
-    const out = new Float32Array(keep.length * 4 * size)
-    keep.forEach((q, i) => out.set(array.subarray(q * 4 * size, (q + 1) * 4 * size), i * 4 * size))
-    return out
-  }
-  const positions = pick(geometry.positions, 3)
-  for (let i = 1; i < positions.length; i += 3) positions[i] = 1
-  return {
-    quadCount: keep.length,
-    positions,
-    uvs: pick(geometry.uvs, 2),
-    colors: pick(geometry.colors, 3),
-    normals: pick(geometry.normals, 3),
-  }
+export function fluidHeightOf(state: BlockState, fluid: number): number {
+  if (fluid === FLUID_NONE) return 0
+  if (!FLUID_BLOCKS.has(state.name)) return 8 / 9
+  const level = Number(state.properties.level ?? 0)
+  const amount = Number.isInteger(level) && level >= 1 && level < 8 ? 8 - level : 8
+  return amount / 9
 }
 
 const FLUID_BLOCKS = new Map([
@@ -414,7 +389,7 @@ function emptyState(): BakedState {
     specialModel: false,
     empty: true,
     fluid: FLUID_NONE,
-    fluidGeometry: null,
-    fluidFull: null,
+    fluidHeight: 0,
+    fluidRender: null,
   }
 }

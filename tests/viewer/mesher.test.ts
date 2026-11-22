@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GROUP_COUNT, INNER_GROUP, type QuadGeometry } from '../../src/lib/models/bakeStates'
+import type { FluidRender } from '../../src/lib/models/bakedTypes'
 import { RenderLayer } from '../../src/lib/models/renderLayer'
 import { faceShade, Mesher, type MesherState } from '../../src/lib/viewer/mesher'
 
@@ -39,8 +40,8 @@ function cube(layer: number, opaque: boolean): MesherState {
     fullFaces: ALL,
     empty: false,
     fluid: 0,
-    fluidGeometry: null,
-    fluidFull: null,
+    fluidHeight: 0,
+    fluidRender: null,
   }
 }
 
@@ -50,8 +51,8 @@ const AIR: MesherState = {
   fullFaces: 0,
   empty: true,
   fluid: 0,
-  fluidGeometry: null,
-  fluidFull: null,
+  fluidHeight: 0,
+  fluidRender: null,
 }
 const STONE = cube(RenderLayer.Opaque, true)
 const GLASS = cube(RenderLayer.Cutout, false)
@@ -153,21 +154,44 @@ describe('Mesher fluids', () => {
   const emptyLayers = () =>
     [0, 1, 2].map(() => new Array<QuadGeometry | null>(GROUP_COUNT).fill(null))
 
-  /** A state holding water: sides and bottom on their sides, surface below the top (inner group). */
-  function withWater(model: MesherState): MesherState {
-    const layer = RenderLayer.Translucent
-    const normal = emptyLayers()
-    const full = emptyLayers()
-    for (let side = 1; side < 6; side++) {
-      normal[layer][side] = quad(side)
-      full[layer][side] = quad(side)
-    }
-    normal[layer][INNER_GROUP] = quad(0) // surface at 14/16
-    full[layer][0] = quad(0) // surface at full height
-    return { ...model, empty: false, fluid: 1, fluidGeometry: normal, fluidFull: full }
+  /** Still and flowing textures in different halves of the atlas, to tell them apart. */
+  const RENDER: FluidRender = {
+    still: [0, 0, 0.5, 0.5],
+    flow: [0.5, 0.5, 1, 1],
+    color: [1, 1, 1],
+    layer: RenderLayer.Translucent,
+  }
+  /** A state holding water (a source unless `height` says otherwise). */
+  function withWater(model: MesherState, height = 8 / 9): MesherState {
+    return { ...model, empty: false, fluid: 1, fluidHeight: height, fluidRender: RENDER }
   }
   /** Water itself: no model, only the fluid. */
-  const water = () => withWater({ ...AIR, geometry: emptyLayers() })
+  const water = (height?: number) => withWater({ ...AIR, geometry: emptyLayers() }, height)
+
+  /** The translucent quads of a structure, as [x, y, z] corners, with their UVs (0–1). */
+  function fluidQuads(size: [number, number, number], blocks: number[], states: MesherState[]) {
+    const layer = mesh(size, blocks, states).mesher.meshSection(0, 0, 0).layers[
+      RenderLayer.Translucent
+    ]!
+    return Array.from({ length: layer.quadCount }, (_, q) => ({
+      corners: [0, 1, 2, 3].map((v) => [
+        ...layer.positions.subarray((q * 4 + v) * 3, (q * 4 + v) * 3 + 3),
+      ]),
+      uvs: [...layer.uvs.subarray(q * 8, q * 8 + 8)].map((u) => u / 65535),
+    }))
+  }
+  /** The surface quad of the block at (x, z): all corners above its floor, facing up. */
+  const surface = (quads: ReturnType<typeof fluidQuads>, x: number, z: number) =>
+    quads.find(
+      (q) =>
+        q.corners.every((c) => c[1] > 0.01) &&
+        q.corners.every((c) => c[0] >= x && c[0] <= x + 1 && c[2] >= z && c[2] <= z + 1) &&
+        new Set(q.corners.map((c) => c[0])).size === 2 &&
+        new Set(q.corners.map((c) => c[2])).size === 2,
+    )!
+  /** Height of a surface corner at (x, z). */
+  const at = (q: { corners: number[][] }, x: number, z: number) =>
+    q.corners.find((c) => c[0] === x && c[2] === z)![1]
   /** A waterlogged plant (kelp, seagrass): a cutout model that covers no side. */
   const plant = (): MesherState => {
     const geometry = emptyLayers()
@@ -207,9 +231,50 @@ describe('Mesher fluids', () => {
 
   it('keeps the full-height surface for a layer cut', () => {
     const mesher = mesh([1, 2, 1], [1, 1], [AIR, water()]).mesher
-    expect(mesher.meshCap(0, 'up')[RenderLayer.Translucent]!.quadCount).toBe(1)
+    const cap = mesher.meshCap(0, 'up')[RenderLayer.Translucent]!
+    expect(cap.quadCount).toBe(1)
+    // With water above, the cut shows the top of the block.
+    for (let v = 0; v < 4; v++) expect(cap.positions[v * 3 + 1]).toBeCloseTo(1, 2)
     // Also under a waterlogged block.
     const wet = mesh([1, 2, 1], [1, 2], [AIR, water(), plant()]).mesher
     expect(wet.meshCap(0, 'up')[RenderLayer.Translucent]!.quadCount).toBe(1)
+  })
+
+  it('draws a still source flat at 8/9, with the still texture', () => {
+    const top = surface(fluidQuads([1, 1, 1], [1], [AIR, water()]), 0, 0)
+    for (const c of top.corners) expect(c[1]).toBeCloseTo(8 / 9, 2)
+    // Every UV inside the still texture's rectangle.
+    expect(top.uvs.every((u) => u <= 0.5 + 1e-4)).toBe(true)
+  })
+
+  it('slopes flowing water down from the source and turns the flow texture along it', () => {
+    // Source at x = 0, flowing water (level 1: 7/9) at x = 1. Outside the
+    // structure counts as unknown, so the far edge does not drop.
+    const quads = fluidQuads([2, 1, 1], [1, 2], [AIR, water(), water(7 / 9)])
+    const flowing = surface(quads, 1, 0)
+    // Corners next to the source are pulled up by it (weighted average), the far ones stay at 7/9.
+    expect(at(flowing, 1, 0)).toBeCloseTo((7 / 9 + (8 / 9) * 10) / 11, 2)
+    expect(at(flowing, 2, 0)).toBeCloseTo(7 / 9, 2)
+    expect(at(flowing, 1, 0)).toBeGreaterThan(at(flowing, 2, 0))
+    // It flows: the flow texture (the other half of the atlas), not the still one.
+    expect(flowing.uvs.every((u) => u >= 0.5 - 1e-4)).toBe(true)
+    // The source's own corners meet the flowing water at the shared edge.
+    expect(at(surface(quads, 0, 0), 1, 0)).toBeCloseTo(at(flowing, 1, 0), 2)
+  })
+
+  it('raises corners next to water with water above to the full block', () => {
+    // Water at (0,0) and (1,0), with more water above (1,0): their shared corners reach 1.
+    const quads = fluidQuads([2, 2, 1], [1, 1, 0, 1], [AIR, water()])
+    const low = surface(quads, 0, 0)
+    expect(at(low, 1, 0)).toBeCloseTo(1, 2)
+    expect(at(low, 0, 0)).toBeCloseTo(8 / 9, 2)
+  })
+
+  it('cuts the side faces at the height of their corners', () => {
+    const quads = fluidQuads([2, 1, 1], [1, 2], [AIR, water(), water(7 / 9)])
+    // East side of the flowing block (x = 2): top at the far corners' height.
+    const east = quads.find((q) => q.corners.every((c) => c[0] === 2))!
+    expect(Math.max(...east.corners.map((c) => c[1]))).toBeCloseTo(7 / 9, 2)
+    expect(Math.min(...east.corners.map((c) => c[1]))).toBe(0)
   })
 })
