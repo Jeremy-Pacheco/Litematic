@@ -7,6 +7,7 @@
 export const es = {
   app: {
     name: 'LitematicViewer',
+    github: 'Dale una estrella al repositorio en GitHub',
   },
   theme: {
     label: 'Tema',
