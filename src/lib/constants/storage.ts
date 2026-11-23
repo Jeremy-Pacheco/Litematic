@@ -8,4 +8,5 @@
 export const STORAGE_KEYS = {
   THEME: 'lv:theme',
   LOCALE: 'lv:locale',
+  GITHUB_STARS: 'lv:github-stars',
 } as const

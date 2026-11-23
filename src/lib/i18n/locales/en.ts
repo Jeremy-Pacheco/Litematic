@@ -4,6 +4,7 @@ import type { Messages } from '../translate'
 export const en: Messages = {
   app: {
     name: 'LitematicViewer',
+    github: 'Star the repository on GitHub',
   },
   theme: {
     label: 'Theme',
